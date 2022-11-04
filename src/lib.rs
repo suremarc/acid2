@@ -1,9 +1,9 @@
 #![feature(const_float_bits_conv)]
 
-use std::ops::{Add, Mul, Neg, Sub};
+use std::ops::{Add, Div, Mul, Neg, Sub};
 
 #[derive(Debug, Clone, Copy)]
-#[repr(C, packed)]
+#[repr(transparent)]
 pub struct F64(u64);
 
 const MASK_SIGNIFICAND: u64 = 0x7ffffffffffff;
@@ -118,10 +118,17 @@ impl Sub for F64 {
     }
 }
 
+impl Div for F64 {
+    type Output = Self;
+
+    fn div(self, _rhs: Self) -> Self::Output {
+        todo!()
+    }
+}
+
 impl From<u32> for F64 {
     fn from(x: u32) -> Self {
         let l = x.trailing_zeros() as u16;
-        // println!("{l}");
         let mut exponent = (l + EXPONENT_ZERO) as u64;
         exponent |= (x == 0) as u64 * EXPONENT_RAW_MAX as u64;
         Self(exponent << 53 | (x as u64) >> l)
