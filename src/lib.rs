@@ -70,11 +70,7 @@ impl Neg for Float64 {
 
     fn neg(self) -> Self::Output {
         let (e, s) = self.split_raw();
-        if s == 0 {
-            self
-        } else {
-            Self(((e as u64) << 48) | (!s & MASK_SIGNIFICAND))
-        }
+        Self(((e as u64) << 48) | (s.wrapping_neg() & MASK_SIGNIFICAND))
     }
 }
 
@@ -90,7 +86,7 @@ impl Add for Float64 {
         let (e2, s2) = (e0.max(e1), s0 + s1);
         let l = s2.trailing_zeros() as u16;
 
-        Self(((e2 as u64 + l as u64) << 48) | (s2 >> l))
+        Self(((e2 as u64 + l as u64) << 48) | ((s2 & MASK_SIGNIFICAND) >> l))
     }
 }
 
@@ -115,7 +111,9 @@ mod tests {
 
     #[test]
     fn it_works() {
-        let result = Float64::from(25) - Float64::from(39);
+        let mut result = Float64::from(25) - Float64::from(39);
+        println!("{:?}", result.split());
+        result = result + (Float64::from(39) - Float64::from(25));
         println!("{:?}", result.split());
     }
 }
