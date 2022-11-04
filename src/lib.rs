@@ -12,17 +12,17 @@ const EXPONENT_ZERO: u16 = 2047;
 impl Float64 {
     #[inline(always)]
     pub const fn zero() -> Self {
-        Self(0)
-    }
-
-    #[inline(always)]
-    pub const fn infinity() -> Self {
         Self((EXPONENT_RAW_MAX as u64) << 48)
     }
 
     #[inline(always)]
+    pub const fn infinity() -> Self {
+        Self(1)
+    }
+
+    #[inline(always)]
     pub const fn nan() -> Self {
-        Self((EXPONENT_RAW_MAX as u64) << 48 | 1)
+        Self(0)
     }
 
     #[inline(always)]
@@ -86,7 +86,10 @@ impl Add for Float64 {
         let (e2, s2) = (e0.max(e1), s0 + s1);
         let l = s2.trailing_zeros() as u16;
 
-        Self(((e2 as u64 + l as u64) << 48) | ((s2 & MASK_SIGNIFICAND) >> l))
+        Self(
+            ((e2.saturating_add(l).min(EXPONENT_RAW_MAX) as u64) << 48)
+                | ((s2 & MASK_SIGNIFICAND) >> l),
+        )
     }
 }
 
@@ -111,9 +114,9 @@ mod tests {
 
     #[test]
     fn it_works() {
-        let mut result = Float64::from(25) - Float64::from(39);
-        println!("{:?}", result.split());
-        result = result + (Float64::from(39) - Float64::from(25));
-        println!("{:?}", result.split());
+        let x = Float64::from(25) - Float64::from(39);
+        println!("{:?}", x.split());
+        let y = Float64::from(39) - Float64::from(25);
+        println!("{:?}", y.split());
     }
 }
