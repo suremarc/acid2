@@ -6,7 +6,7 @@ use std::ops::{Add, Div, Mul, Neg, Sub};
 #[repr(transparent)]
 pub struct F64(u64);
 
-const MASK_SIGNIFICAND: u64 = 0x7ffffffffffff;
+const MASK_SIGNIFICAND: u64 = 0x1fffffffffffff;
 const MASK_VALUATION: u64 = !MASK_SIGNIFICAND;
 const VALUATION_MAX: i16 = 1024;
 const VALUATION_UNSIGNED_MAX: u16 = 2047;
@@ -25,12 +25,12 @@ impl F64 {
 
     #[inline(always)]
     pub const fn infinity() -> Self {
-        Self((VALUATION_UNSIGNED_MAX as u64) << 53)
+        Self((VALUATION_UNSIGNED_MAX as u64) << 53 | 1)
     }
 
     #[inline(always)]
     pub const fn nan() -> Self {
-        Self((VALUATION_UNSIGNED_MAX as u64) << 53 | 1)
+        Self((VALUATION_UNSIGNED_MAX as u64) << 53)
     }
 
     #[inline(always)]
@@ -58,7 +58,12 @@ impl F64 {
 
     #[inline(always)]
     pub const fn abs(self) -> f64 {
-        f64::from_bits((self.0 & MASK_VALUATION) >> 1)
+        f64::from_bits(
+            (self.0 & MASK_VALUATION) >> 1
+                | ((self.0 & MASK_SIGNIFICAND) == 0
+                    && self.valuation_unsigned() == VALUATION_UNSIGNED_MAX)
+                    as u64,
+        )
     }
 
     #[inline]
@@ -99,7 +104,8 @@ impl Add for F64 {
         let (v0, s0) = self.split_unsigned();
         let (v1, s1) = rhs.split_unsigned();
 
-        let (v2, s2) = (v0.min(v1), s0 + s1);
+        let v2 = v0.min(v1);
+        let s2 = (s0 << ((v0 - v2) as u64)) + (s1 << ((v1 - v2) as u64));
         let l = s2.trailing_zeros() as u16;
 
         Self((v2.saturating_sub(l) as u64) << 53 | ((s2 >> l) & MASK_SIGNIFICAND))
@@ -187,5 +193,10 @@ mod tests {
 
         println!("{:?}", (F64::from(2) * F64::infinity()).split());
         println!("{:?}", F64::infinity().abs());
+
+        println!(
+            "{:?}",
+            (F64::from(3) / F64::from(8) + F64::from(5) / F64::from(8)).split()
+        );
     }
 }
