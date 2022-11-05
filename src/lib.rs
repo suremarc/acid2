@@ -40,7 +40,7 @@ impl F64 {
     }
 
     const fn valuation_unsigned(self) -> u16 {
-        ((self.0 & MASK_EXPONENT) >> 53) as u16
+        (self.0 >> 53) as u16
     }
 
     #[inline(always)]
