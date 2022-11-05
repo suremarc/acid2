@@ -7,7 +7,7 @@ use std::ops::{Add, Div, Mul, Neg, Sub};
 pub struct F64(u64);
 
 const MASK_SIGNIFICAND: u64 = 0x7ffffffffffff;
-const MASK_EXPONENT: u64 = !MASK_SIGNIFICAND;
+const MASK_VALUATION: u64 = !MASK_SIGNIFICAND;
 const VALUATION_MAX: i16 = 1024;
 const VALUATION_MIN: i16 = -1023;
 const VALUATION_UNSIGNED_MAX: u16 = 2047;
@@ -26,12 +26,12 @@ impl F64 {
 
     #[inline(always)]
     pub const fn infinity() -> Self {
-        Self((VALUATION_UNSIGNED_MAX as u64) << 53 | 1)
+        Self((VALUATION_UNSIGNED_MAX as u64) << 53)
     }
 
     #[inline(always)]
     pub const fn nan() -> Self {
-        Self((VALUATION_UNSIGNED_MAX as u64) << 53)
+        Self((VALUATION_UNSIGNED_MAX as u64) << 53 | 1)
     }
 
     #[inline(always)]
@@ -59,20 +59,20 @@ impl F64 {
 
     #[inline(always)]
     pub const fn abs(self) -> f64 {
-        f64::from_bits((self.valuation_unsigned() as u64) << 52)
+        f64::from_bits((self.0 & MASK_VALUATION) >> 1)
     }
 
     #[inline]
     pub const fn normalize(self) -> Self {
-        let (e, s) = self.split_unsigned();
+        let (v, s) = self.split_unsigned();
 
         if s == 0 {
             self
-        } else if e == 0 {
+        } else if v == 0 {
             Self::infinity()
         } else {
             let l = s.trailing_zeros();
-            Self(((e as u64 + l as u64) << 53) | (s >> l))
+            Self(((v as u64 + l as u64) << 53) | (s >> l))
         }
     }
 
@@ -86,8 +86,8 @@ impl Neg for F64 {
     type Output = Self;
 
     fn neg(self) -> Self::Output {
-        let (e, s) = self.split_unsigned();
-        Self(((e as u64) << 53) | (s.wrapping_neg() & MASK_SIGNIFICAND))
+        let (v, s) = self.split_unsigned();
+        Self(((v as u64) << 53) | (s.wrapping_neg() & MASK_SIGNIFICAND))
     }
 }
 
@@ -97,13 +97,13 @@ impl Add for F64 {
     // TODO: investigate if this works for non-normal numbers
     #[inline(always)]
     fn add(self, rhs: Self) -> Self::Output {
-        let (e0, s0) = self.split_unsigned();
-        let (e1, s1) = rhs.split_unsigned();
+        let (v0, s0) = self.split_unsigned();
+        let (v1, s1) = rhs.split_unsigned();
 
-        let (e2, s2) = (e0.min(e1), s0 + s1);
+        let (v2, s2) = (v0.min(v1), s0 + s1);
         let l = s2.trailing_zeros() as u16;
 
-        Self((e2.saturating_sub(l) as u64) << 53 | ((s2 >> l) & MASK_SIGNIFICAND))
+        Self((v2.saturating_sub(l) as u64) << 53 | ((s2 >> l) & MASK_SIGNIFICAND))
     }
 }
 
@@ -111,17 +111,17 @@ impl Mul for F64 {
     type Output = Self;
 
     fn mul(self, rhs: Self) -> Self::Output {
-        let (e0, s0) = self.split();
-        let (e1, s1) = rhs.split();
+        let (v0, s0) = self.split();
+        let (v1, s1) = rhs.split();
 
-        let mut e2 =
-            ((e0 + e1 + VALUATION_UNSIGNED_ZERO as i16) as u64).min(VALUATION_UNSIGNED_MAX as u64);
+        let mut v2 =
+            ((v0 + v1 + VALUATION_UNSIGNED_ZERO as i16) as u64).min(VALUATION_UNSIGNED_MAX as u64);
 
         // handle infinity or nan
         // FIXME: broken after changing internal representation of exponent
-        e2 &= !(e0 == VALUATION_MAX || e1 == VALUATION_MAX) as u64 * VALUATION_UNSIGNED_MAX as u64;
+        v2 &= !(v0 == VALUATION_MAX || v1 == VALUATION_MAX) as u64 * VALUATION_UNSIGNED_MAX as u64;
 
-        Self(e2 << 53 | (s0.wrapping_mul(s1) & MASK_SIGNIFICAND))
+        Self(v2 << 53 | (s0.wrapping_mul(s1) & MASK_SIGNIFICAND))
     }
 }
 
@@ -139,10 +139,10 @@ impl Div for F64 {
 
     #[inline]
     fn div(self, rhs: Self) -> Self::Output {
-        let (e0, s0) = self.split();
-        let (e1, s1) = rhs.split();
+        let (v0, s0) = self.split();
+        let (v1, s1) = rhs.split();
 
-        let e2 = e0 + VALUATION_UNSIGNED_ZERO as i16 - e1;
+        let v2 = v0 + VALUATION_UNSIGNED_ZERO as i16 - v1;
 
         let (mut t0, mut t1) = (0u64, 1u64);
         let (mut r0, mut r1) = (1u64 << 54, s1);
@@ -155,7 +155,7 @@ impl Div for F64 {
 
         let inv_s1 = t0;
 
-        Self((e2 as u64) << 53 | (inv_s1.wrapping_mul(s0) & MASK_SIGNIFICAND))
+        Self((v2 as u64) << 53 | (inv_s1.wrapping_mul(s0) & MASK_SIGNIFICAND))
     }
 }
 
