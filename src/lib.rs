@@ -8,38 +8,38 @@ pub struct F64(u64);
 
 const MASK_SIGNIFICAND: u64 = 0x7ffffffffffff;
 const MASK_EXPONENT: u64 = !MASK_SIGNIFICAND;
-const EXPONENT_MAX: i16 = 1024;
-const EXPONENT_MIN: i16 = -1023;
-const EXPONENT_UNSIGNED_MAX: u16 = 2047;
-const EXPONENT_UNSIGNED_ZERO: u16 = 1023;
+const VALUATION_MAX: i16 = 1024;
+const VALUATION_MIN: i16 = -1023;
+const VALUATION_UNSIGNED_MAX: u16 = 2047;
+const VALUATION_UNSIGNED_ZERO: u16 = 1023;
 
 impl F64 {
     #[inline(always)]
     pub const fn zero() -> Self {
-        Self((EXPONENT_UNSIGNED_MAX as u64) << 53)
-    }
-
-    #[inline(always)]
-    pub const fn one() -> Self {
-        Self((EXPONENT_UNSIGNED_ZERO as u64) << 53 | 1)
-    }
-
-    #[inline(always)]
-    pub const fn infinity() -> Self {
-        Self(1)
-    }
-
-    #[inline(always)]
-    pub const fn nan() -> Self {
         Self(0)
     }
 
     #[inline(always)]
-    pub const fn exponent(self) -> i16 {
-        self.exponent_unsigned() as i16 - EXPONENT_UNSIGNED_ZERO as i16
+    pub const fn one() -> Self {
+        Self((VALUATION_UNSIGNED_ZERO as u64) << 53 | 1)
     }
 
-    const fn exponent_unsigned(self) -> u16 {
+    #[inline(always)]
+    pub const fn infinity() -> Self {
+        Self((VALUATION_UNSIGNED_MAX as u64) << 53 | 1)
+    }
+
+    #[inline(always)]
+    pub const fn nan() -> Self {
+        Self((VALUATION_UNSIGNED_MAX as u64) << 53)
+    }
+
+    #[inline(always)]
+    pub const fn valuation(self) -> i16 {
+        self.valuation_unsigned() as i16 - VALUATION_UNSIGNED_ZERO as i16
+    }
+
+    const fn valuation_unsigned(self) -> u16 {
         ((self.0 & MASK_EXPONENT) >> 53) as u16
     }
 
@@ -50,16 +50,16 @@ impl F64 {
 
     #[inline(always)]
     pub const fn split(self) -> (i16, u64) {
-        (self.exponent(), self.significand())
+        (self.valuation(), self.significand())
     }
 
     const fn split_unsigned(self) -> (u16, u64) {
-        (self.exponent_unsigned(), self.significand())
+        (self.valuation_unsigned(), self.significand())
     }
 
     #[inline(always)]
     pub const fn abs(self) -> f64 {
-        f64::from_bits(2046u64.saturating_sub(self.exponent_unsigned() as u64) << 52)
+        f64::from_bits((self.valuation_unsigned() as u64) << 52)
     }
 
     #[inline]
@@ -100,10 +100,10 @@ impl Add for F64 {
         let (e0, s0) = self.split_unsigned();
         let (e1, s1) = rhs.split_unsigned();
 
-        let (e2, s2) = (e0.max(e1), s0 + s1);
+        let (e2, s2) = (e0.min(e1), s0 + s1);
         let l = s2.trailing_zeros() as u16;
 
-        Self((((e2 + l).min(EXPONENT_UNSIGNED_MAX) as u64) << 53) | ((s2 >> l) & MASK_SIGNIFICAND))
+        Self((e2.saturating_sub(l) as u64) << 53 | ((s2 >> l) & MASK_SIGNIFICAND))
     }
 }
 
@@ -115,10 +115,11 @@ impl Mul for F64 {
         let (e1, s1) = rhs.split();
 
         let mut e2 =
-            ((e0 + e1 + EXPONENT_UNSIGNED_ZERO as i16) as u64).min(EXPONENT_UNSIGNED_MAX as u64);
+            ((e0 + e1 + VALUATION_UNSIGNED_ZERO as i16) as u64).min(VALUATION_UNSIGNED_MAX as u64);
 
         // handle infinity or nan
-        e2 &= !(e0 == EXPONENT_MIN || e1 == EXPONENT_MIN) as u64 * EXPONENT_UNSIGNED_MAX as u64;
+        // FIXME: broken after changing internal representation of exponent
+        e2 &= !(e0 == VALUATION_MAX || e1 == VALUATION_MAX) as u64 * VALUATION_UNSIGNED_MAX as u64;
 
         Self(e2 << 53 | (s0.wrapping_mul(s1) & MASK_SIGNIFICAND))
     }
@@ -141,7 +142,7 @@ impl Div for F64 {
         let (e0, s0) = self.split();
         let (e1, s1) = rhs.split();
 
-        let e2 = e0 + EXPONENT_UNSIGNED_ZERO as i16 - e1;
+        let e2 = e0 + VALUATION_UNSIGNED_ZERO as i16 - e1;
 
         let (mut t0, mut t1) = (0u64, 1u64);
         let (mut r0, mut r1) = (1u64 << 54, s1);
@@ -162,9 +163,7 @@ impl From<u32> for F64 {
     #[inline(always)]
     fn from(x: u32) -> Self {
         let l = x.trailing_zeros() as u16;
-        let mut e = (l + EXPONENT_UNSIGNED_ZERO) as u64;
-        e |= (x == 0) as u64 * EXPONENT_UNSIGNED_MAX as u64;
-        Self(e << 53 | (x as u64) >> l)
+        Self(((VALUATION_UNSIGNED_ZERO - l) as u64) << 53 | (x as u64) >> l)
     }
 }
 
@@ -188,6 +187,6 @@ mod tests {
         println!("{:?}", (frac * F64::from(121)).split());
 
         println!("{:?}", (F64::from(2) * F64::infinity()).split());
-        println!("{:?}", F64::infinity().split());
+        println!("{:?}", F64::infinity().abs());
     }
 }
