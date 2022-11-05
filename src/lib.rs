@@ -9,7 +9,6 @@ pub struct F64(u64);
 const MASK_SIGNIFICAND: u64 = 0x7ffffffffffff;
 const MASK_VALUATION: u64 = !MASK_SIGNIFICAND;
 const VALUATION_MAX: i16 = 1024;
-const VALUATION_MIN: i16 = -1023;
 const VALUATION_UNSIGNED_MAX: u16 = 2047;
 const VALUATION_UNSIGNED_ZERO: u16 = 1023;
 
@@ -118,8 +117,7 @@ impl Mul for F64 {
             ((v0 + v1 + VALUATION_UNSIGNED_ZERO as i16) as u64).min(VALUATION_UNSIGNED_MAX as u64);
 
         // handle infinity or nan
-        // FIXME: broken after changing internal representation of exponent
-        v2 &= !(v0 == VALUATION_MAX || v1 == VALUATION_MAX) as u64 * VALUATION_UNSIGNED_MAX as u64;
+        v2 |= (v0 == VALUATION_MAX || v1 == VALUATION_MAX) as u64 * VALUATION_UNSIGNED_MAX as u64;
 
         Self(v2 << 53 | (s0.wrapping_mul(s1) & MASK_SIGNIFICAND))
     }
@@ -137,6 +135,7 @@ impl Sub for F64 {
 impl Div for F64 {
     type Output = Self;
 
+    // FIXME: investigate behavior for nan/inf/subnormals (most definitely does not work)
     #[inline]
     fn div(self, rhs: Self) -> Self::Output {
         let (v0, s0) = self.split();
