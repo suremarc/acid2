@@ -18,6 +18,11 @@ impl F64 {
     }
 
     #[inline(always)]
+    pub const fn one() -> Self {
+        Self((EXPONENT_ZERO as u64) << 53 | 1)
+    }
+
+    #[inline(always)]
     pub const fn infinity() -> Self {
         Self(1)
     }
@@ -121,12 +126,29 @@ impl Sub for F64 {
 impl Div for F64 {
     type Output = Self;
 
-    fn div(self, _rhs: Self) -> Self::Output {
-        todo!()
+    fn div(self, rhs: Self) -> Self::Output {
+        let (e0, s0) = self.split();
+        let (e1, s1) = rhs.split();
+
+        let e2 = e0 + EXPONENT_ZERO as i16 - e1;
+
+        let (mut t0, mut t1) = (0u64, 1u64);
+        let (mut r0, mut r1) = (1u64 << 54, s1);
+
+        while r1 != 0 {
+            let q = r0 / r1;
+            (t0, t1) = (t1, t0.wrapping_sub(q.wrapping_mul(t1)));
+            (r0, r1) = (r1, r0.wrapping_sub(q.wrapping_mul(r1)));
+        }
+
+        let inv_s1 = t0;
+
+        Self((e2 as u64) << 53 | (inv_s1.wrapping_mul(s0) & MASK_SIGNIFICAND))
     }
 }
 
 impl From<u32> for F64 {
+    #[inline(always)]
     fn from(x: u32) -> Self {
         let l = x.trailing_zeros() as u16;
         let mut exponent = (l + EXPONENT_ZERO) as u64;
@@ -150,6 +172,8 @@ mod tests {
         let w = F64::from(2) * F64::from(4);
         println!("{}", w.abs());
 
-        println!("{:?}", F64((EXPONENT_RAW_MAX as u64 - 1) << 53).abs());
+        let frac = F64::from(13) / F64::from(11);
+        println!("{:?}", frac.split());
+        println!("{:?}", (frac * F64::from(11)).split());
     }
 }
