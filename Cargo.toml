@@ -16,6 +16,10 @@ rand = ["dep:rand", "dep:rand_distr"]
 [dev-dependencies]
 criterion = "0.3"
 
+[[bench]]
+name = "arithmetic"
+harness = false
+
 [profile.release-with-debug]
 inherits = "release"
 debug = true
