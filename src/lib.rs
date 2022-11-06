@@ -13,25 +13,10 @@ const VALUATION_UNSIGNED_MAX: u16 = 2047;
 const VALUATION_UNSIGNED_ZERO: u16 = 1023;
 
 impl F64 {
-    #[inline(always)]
-    pub const fn zero() -> Self {
-        Self(0)
-    }
-
-    #[inline(always)]
-    pub const fn one() -> Self {
-        Self((VALUATION_UNSIGNED_ZERO as u64) << 53 | 1)
-    }
-
-    #[inline(always)]
-    pub const fn infinity() -> Self {
-        Self((VALUATION_UNSIGNED_MAX as u64) << 53 | 1)
-    }
-
-    #[inline(always)]
-    pub const fn nan() -> Self {
-        Self((VALUATION_UNSIGNED_MAX as u64) << 53)
-    }
+    pub const ZERO: Self = Self(0);
+    pub const ONE: Self = Self((VALUATION_UNSIGNED_ZERO as u64) << 53 | 1);
+    pub const INFINITY: Self = Self((VALUATION_UNSIGNED_MAX as u64) << 53);
+    pub const NAN: Self = Self((VALUATION_UNSIGNED_MAX as u64) << 53 | 1);
 
     #[inline(always)]
     pub const fn valuation(self) -> i16 {
@@ -58,31 +43,23 @@ impl F64 {
 
     #[inline(always)]
     pub const fn abs(self) -> f64 {
-        f64::from_bits(
-            (self.0 & MASK_VALUATION) >> 1
-                | ((self.0 & MASK_SIGNIFICAND) == 0
-                    && self.valuation_unsigned() == VALUATION_UNSIGNED_MAX)
-                    as u64,
-        )
+        f64::from_bits((self.0 & MASK_VALUATION) >> 1 | self.is_nan() as u64)
     }
 
-    #[inline]
-    pub const fn normalize(self) -> Self {
-        let (v, s) = self.split_unsigned();
-
-        if s == 0 {
-            self
-        } else if v == 0 {
-            Self::infinity()
-        } else {
-            let l = s.trailing_zeros();
-            Self(((v as u64 + l as u64) << 53) | (s >> l))
-        }
-    }
-
-    #[inline]
     pub const fn is_nan(self) -> bool {
-        self.normalize().0 == 0
+        self.0 & MASK_VALUATION == MASK_VALUATION && self.0 & MASK_SIGNIFICAND != 0
+    }
+
+    pub const fn is_infinite(self) -> bool {
+        self.0 == Self::INFINITY.0
+    }
+
+    pub const fn is_finite(self) -> bool {
+        self.0 & MASK_VALUATION != MASK_VALUATION
+    }
+
+    pub fn exp4(self) -> Self {
+        todo!()
     }
 }
 
@@ -104,11 +81,14 @@ impl Add for F64 {
         let (v0, s0) = self.split_unsigned();
         let (v1, s1) = rhs.split_unsigned();
 
-        let v2 = v0.min(v1);
-        let s2 = (s0 << ((v0 - v2) as u64)) + (s1 << ((v1 - v2) as u64));
+        let min_v = v0.min(v1);
+        let s2 = (s0 << ((v0 - min_v) as u64)) + (s1 << ((v1 - min_v) as u64));
         let l = s2.trailing_zeros() as u16;
+        let v2 = min_v.saturating_sub(l)
+            | ((v0 == VALUATION_UNSIGNED_MAX || v1 == VALUATION_UNSIGNED_MAX) as u16
+                * VALUATION_UNSIGNED_MAX);
 
-        Self((v2.saturating_sub(l) as u64) << 53 | ((s2 >> l) & MASK_SIGNIFICAND))
+        Self((v2 as u64) << 53 | ((s2 >> l) & MASK_SIGNIFICAND))
     }
 }
 
@@ -124,8 +104,10 @@ impl Mul for F64 {
 
         // handle infinity or nan
         v2 |= (v0 == VALUATION_MAX || v1 == VALUATION_MAX) as u64 * VALUATION_UNSIGNED_MAX as u64;
+        let mut s2 = s0.wrapping_mul(s1) & MASK_SIGNIFICAND;
+        s2 |= (self.is_nan() || rhs.is_nan()) as u64;
 
-        Self(v2 << 53 | (s0.wrapping_mul(s1) & MASK_SIGNIFICAND))
+        Self(v2 << 53 | s2)
     }
 }
 
@@ -176,6 +158,8 @@ impl From<u32> for F64 {
 mod tests {
     use super::*;
 
+    const EPSILON: f64 = 1e-15;
+
     #[test]
     fn it_works() {
         let x = F64::from(25) - F64::from(39);
@@ -184,19 +168,25 @@ mod tests {
         println!("{}", y.abs());
         let z = x + y;
         println!("{}", z.abs());
+        assert!(z.abs() < EPSILON);
         let w = F64::from(2) * F64::from(4);
-        println!("{}", w.abs());
+        assert_eq!(w.0, F64::from(8).0);
 
         let frac = F64::from(13) / F64::from(11) / F64::from(11);
         println!("{:?}", frac.split());
-        println!("{:?}", (frac * F64::from(121)).split());
+        let thirteen = frac * F64::from(121);
+        println!("{:?}", thirteen.split());
+        assert!((thirteen - F64::from(13)).abs() < EPSILON);
 
-        println!("{:?}", (F64::from(2) * F64::infinity()).split());
-        println!("{:?}", F64::infinity().abs());
+        println!("{:?}", (F64::from(2) * F64::INFINITY).split());
+        assert!((F64::from(2) * F64::INFINITY).is_infinite());
+        println!("{:?}", F64::INFINITY.abs());
+        assert!(F64::INFINITY.abs().is_infinite());
 
-        println!(
-            "{:?}",
-            (F64::from(3) / F64::from(8) + F64::from(5) / F64::from(8)).split()
-        );
+        let one = F64::from(3) / F64::from(8) + F64::from(5) / F64::from(8);
+        println!("{:?}", one.split());
+        assert_eq!(one.0, F64::ONE.0);
+
+        println!("{:?}", (F64::NAN * F64::INFINITY).abs());
     }
 }
