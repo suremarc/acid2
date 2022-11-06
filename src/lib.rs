@@ -79,7 +79,15 @@ impl F64 {
 
     #[inline(always)]
     pub const fn recip(self) -> Self {
-        Self::ONE / self
+        let (e, s) = self.split_unsigned();
+
+        let mut x = s.wrapping_mul(2u64.wrapping_sub(s.wrapping_mul(s)));
+        x = x.wrapping_mul(2u64.wrapping_sub(s.wrapping_mul(x)));
+        x = x.wrapping_mul(2u64.wrapping_sub(s.wrapping_mul(x)));
+        x = x.wrapping_mul(2u64.wrapping_sub(s.wrapping_mul(x)));
+        x = x.wrapping_mul(2u64.wrapping_sub(s.wrapping_mul(x)));
+
+        Self(2046u64.wrapping_sub(e as u64) << 53 | x & MASK_SIGNIFICAND)
     }
 }
 
@@ -168,24 +176,9 @@ impl const Div for F64 {
 
     // FIXME: investigate behavior for nan/inf/subnormals (most definitely does not work)
     #[inline]
+    #[allow(clippy::suspicious_arithmetic_impl)] // lol
     fn div(self, rhs: Self) -> Self::Output {
-        let (e0, s0) = self.split();
-        let (e1, s1) = rhs.split();
-
-        let e2 = e0 + EXPONENT_UNSIGNED_ZERO as i16 - e1;
-
-        let (mut t0, mut t1) = (0u64, 1u64);
-        let (mut r0, mut r1) = (1u64 << 54, s1);
-
-        while r1 != 0 {
-            let q = r0 / r1;
-            (t0, t1) = (t1, t0.wrapping_sub(q.wrapping_mul(t1)));
-            (r0, r1) = (r1, r0.wrapping_sub(q.wrapping_mul(r1)));
-        }
-
-        let inv_s1 = t0;
-
-        Self((e2 as u64) << 53 | (inv_s1.wrapping_mul(s0) & MASK_SIGNIFICAND))
+        self * rhs.recip()
     }
 }
 
