@@ -3,9 +3,12 @@
 #![feature(bigint_helper_methods)]
 #![feature(const_bigint_helper_methods)]
 
-use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
+use std::{
+    fmt::Debug,
+    ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign},
+};
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Clone, Copy)]
 #[repr(transparent)]
 pub struct F64(u64);
 
@@ -77,6 +80,7 @@ impl F64 {
         res
     }
 
+    // formula sourced from "Modern Computer Arithmetic" version 0.5.9, pg. 66
     #[inline(always)]
     pub const fn recip(self) -> Self {
         let (e, s) = self.split_unsigned();
@@ -87,7 +91,9 @@ impl F64 {
         x = x.wrapping_mul(2u64.wrapping_sub(s.wrapping_mul(x)));
         x = x.wrapping_mul(2u64.wrapping_sub(s.wrapping_mul(x)));
 
-        Self(2046u64.wrapping_sub(e as u64) << 53 | x & MASK_SIGNIFICAND)
+        let exponent = // short circuit to INF if equal to zero
+            2046u16.wrapping_sub(e) | (((self.0 == 0) as u16) * EXPONENT_UNSIGNED_MAX);
+        Self((exponent as u64) << 53 | x & MASK_SIGNIFICAND)
     }
 }
 
@@ -124,6 +130,7 @@ impl const Add for F64 {
 }
 
 impl AddAssign for F64 {
+    #[inline(always)]
     fn add_assign(&mut self, rhs: Self) {
         *self = *self + rhs;
     }
@@ -150,6 +157,7 @@ impl const Mul for F64 {
 }
 
 impl MulAssign for F64 {
+    #[inline(always)]
     fn mul_assign(&mut self, rhs: Self) {
         *self = *self * rhs;
     }
@@ -165,6 +173,7 @@ impl const Sub for F64 {
 }
 
 impl SubAssign for F64 {
+    #[inline(always)]
     fn sub_assign(&mut self, rhs: Self) {
         *self = *self - rhs
     }
@@ -181,6 +190,7 @@ impl const Div for F64 {
 }
 
 impl DivAssign for F64 {
+    #[inline(always)]
     fn div_assign(&mut self, rhs: Self) {
         *self = *self / rhs
     }
@@ -191,6 +201,15 @@ impl const From<u32> for F64 {
     fn from(x: u32) -> Self {
         let l = x.trailing_zeros() as u16;
         Self(((EXPONENT_UNSIGNED_ZERO - l) as u64) << 53 | (x as u64) >> l)
+    }
+}
+
+impl Debug for F64 {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_tuple("F64")
+            .field(&self.exponent())
+            .field(&self.significand())
+            .finish()
     }
 }
 
@@ -213,18 +232,18 @@ mod tests {
         assert_eq!(w.0, F64::from(8).0);
 
         let frac = F64::from(13) / F64::from(11) / F64::from(11);
-        println!("{:?}", frac.split());
+        println!("{:?}", frac);
         let thirteen = frac * F64::from(121);
-        println!("{:?}", thirteen.split());
+        println!("{:?}", thirteen);
         assert!((thirteen - F64::from(13)).abs() < EPSILON);
 
-        println!("{:?}", (F64::from(2) * F64::INFINITY).split());
+        println!("{:?}", (F64::from(2) * F64::INFINITY));
         assert!((F64::from(2) * F64::INFINITY).is_infinite());
         println!("{:?}", F64::INFINITY.abs());
         assert!(F64::INFINITY.abs().is_infinite());
 
         let one = F64::from(3) / F64::from(8) + F64::from(5) / F64::from(8);
-        println!("{:?}", one.split());
+        println!("{:?}", one);
         assert_eq!(one.0, F64::ONE.0);
 
         println!("{:?}", (F64::NAN * F64::INFINITY).abs());
