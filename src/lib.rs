@@ -1,7 +1,7 @@
 #![feature(const_float_bits_conv)]
 #![feature(const_trait_impl)]
 
-use std::ops::{Add, Div, Mul, Neg, Sub};
+use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
 #[derive(Debug, Clone, Copy)]
 #[repr(transparent)]
@@ -67,9 +67,40 @@ impl F64 {
         self.0 & MASK_VALUATION != MASK_VALUATION
     }
 
+    // using assignment requires const support for mutable references
+    #[allow(clippy::assign_op_pattern)]
+    pub const fn powi(self, pow: u32) -> Self {
+        let mut res = Self::ONE;
+        let mut i = 0;
+        while i < pow {
+            i += 1;
+            res = res * self;
+        }
+
+        res
+    }
+
     #[inline(always)]
     pub const fn exp4(self) -> Self {
         todo!()
+    }
+
+    #[allow(clippy::assign_op_pattern)]
+    pub const fn slow_exp(self) -> Self {
+        let mut p = Self::ONE;
+        let mut f = Self::ONE;
+        let mut sum = Self::ZERO;
+
+        let mut i = 0;
+        while i < 54 {
+            sum = sum + p / f;
+
+            i += 1;
+            p = p * self;
+            f = f * Self::from(i);
+        }
+
+        sum
     }
 }
 
@@ -92,14 +123,20 @@ impl const Add for F64 {
         let (v0, s0) = self.split_unsigned();
         let (v1, s1) = rhs.split_unsigned();
 
-        let min_v = v0.min(v1);
-        let s2 = (s0 << ((v0 - min_v) as u64)) + (s1 << ((v1 - min_v) as u64));
+        let max_v = v0.max(v1);
+        let s2 = (s0.wrapping_shl((max_v - v0) as u32)) + (s1.wrapping_shl((max_v - v1) as u32));
         let l = s2.trailing_zeros() as u16;
-        let v2 = min_v.saturating_sub(l)
+        let v2 = max_v.saturating_sub(l)
             | ((v0 == VALUATION_UNSIGNED_MAX || v1 == VALUATION_UNSIGNED_MAX) as u16
                 * VALUATION_UNSIGNED_MAX);
 
         Self((v2 as u64) << 53 | ((s2 >> l) & MASK_SIGNIFICAND))
+    }
+}
+
+impl AddAssign for F64 {
+    fn add_assign(&mut self, rhs: Self) {
+        *self = *self + rhs;
     }
 }
 
@@ -123,12 +160,24 @@ impl const Mul for F64 {
     }
 }
 
+impl MulAssign for F64 {
+    fn mul_assign(&mut self, rhs: Self) {
+        *self = *self * rhs;
+    }
+}
+
 impl const Sub for F64 {
     type Output = Self;
 
     #[inline(always)]
     fn sub(self, rhs: Self) -> Self::Output {
         self + (-rhs)
+    }
+}
+
+impl SubAssign for F64 {
+    fn sub_assign(&mut self, rhs: Self) {
+        *self = *self - rhs
     }
 }
 
@@ -155,6 +204,12 @@ impl const Div for F64 {
         let inv_s1 = t0;
 
         Self((v2 as u64) << 53 | (inv_s1.wrapping_mul(s0) & MASK_SIGNIFICAND))
+    }
+}
+
+impl DivAssign for F64 {
+    fn div_assign(&mut self, rhs: Self) {
+        *self = *self / rhs
     }
 }
 
