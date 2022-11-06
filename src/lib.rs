@@ -111,11 +111,10 @@ impl const Add for F64 {
         let (e1, s1) = rhs.split_unsigned();
 
         let max_e = e0.max(e1);
-        let (mut s2, carry) = (s0.wrapping_shl((max_e - e0) as u32))
-            .carrying_add(s1.wrapping_shl((max_e - e1) as u32), false);
+        let mut s2 = (s0.wrapping_shl((max_e - e0) as u32))
+            .wrapping_add(s1.wrapping_shl((max_e - e1) as u32));
         let l = s2.trailing_zeros() as u16;
         s2 >>= l;
-        s2 = s2 | (s2 == 0 && carry) as u64;
         let e2 = max_e.saturating_sub(l)
             | ((e0 == EXPONENT_UNSIGNED_MAX || e1 == EXPONENT_UNSIGNED_MAX) as u16
                 * EXPONENT_UNSIGNED_MAX);
@@ -174,7 +173,6 @@ impl SubAssign for F64 {
 impl const Div for F64 {
     type Output = Self;
 
-    // FIXME: investigate behavior for nan/inf/subnormals (most definitely does not work)
     #[inline]
     #[allow(clippy::suspicious_arithmetic_impl)] // lol
     fn div(self, rhs: Self) -> Self::Output {
