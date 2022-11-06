@@ -42,6 +42,7 @@ impl F64 {
         (self.valuation_unsigned(), self.significand())
     }
 
+    #[inline(always)]
     pub const fn exponent(self) -> i16 {
         -self.valuation()
     }
@@ -51,18 +52,22 @@ impl F64 {
         f64::from_bits((self.0 & MASK_VALUATION) >> 1 | self.is_nan() as u64)
     }
 
+    #[inline(always)]
     pub const fn is_nan(self) -> bool {
         self.0 & MASK_VALUATION == MASK_VALUATION && self.0 & MASK_SIGNIFICAND != 0
     }
 
+    #[inline(always)]
     pub const fn is_infinite(self) -> bool {
         self.0 == Self::INFINITY.0
     }
 
+    #[inline(always)]
     pub const fn is_finite(self) -> bool {
         self.0 & MASK_VALUATION != MASK_VALUATION
     }
 
+    #[inline(always)]
     pub const fn exp4(self) -> Self {
         todo!()
     }
@@ -71,6 +76,7 @@ impl F64 {
 impl const Neg for F64 {
     type Output = Self;
 
+    #[inline(always)]
     fn neg(self) -> Self::Output {
         let (v, s) = self.split_unsigned();
         Self(((v as u64) << 53) | (s.wrapping_neg() & MASK_SIGNIFICAND))
@@ -100,6 +106,7 @@ impl const Add for F64 {
 impl const Mul for F64 {
     type Output = Self;
 
+    #[inline(always)]
     fn mul(self, rhs: Self) -> Self::Output {
         let (v0, s0) = self.split();
         let (v1, s1) = rhs.split();
