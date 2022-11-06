@@ -210,6 +210,16 @@ impl Debug for F64 {
     }
 }
 
+#[cfg(feature = "rand")]
+impl rand::distributions::Distribution<F64> for rand::distributions::Standard {
+    fn sample<R: rand::Rng + ?Sized>(&self, rng: &mut R) -> F64 {
+        let scale = rand_distr::StandardGeometric.sample(rng);
+        let mut significand: u64 = self.sample(rng);
+        significand |= 1; // make sure it's odd
+        F64((EXPONENT_UNSIGNED_ZERO as u64 - scale) << 53 | (significand & MASK_SIGNIFICAND))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
