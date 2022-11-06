@@ -10,23 +10,23 @@ use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssi
 pub struct F64(u64);
 
 const MASK_SIGNIFICAND: u64 = 0x1fffffffffffff;
-const MASK_VALUATION: u64 = !MASK_SIGNIFICAND;
-const VALUATION_MAX: i16 = 1024;
-const VALUATION_UNSIGNED_MAX: u16 = 2047;
-const VALUATION_UNSIGNED_ZERO: u16 = 1023;
+const MASK_EXPONENT: u64 = !MASK_SIGNIFICAND;
+const EXPONENT_MAX: i16 = 1024;
+const EXPONENT_UNSIGNED_MAX: u16 = 2047;
+const EXPONENT_UNSIGNED_ZERO: u16 = 1023;
 
 impl F64 {
     pub const ZERO: Self = Self(0);
-    pub const ONE: Self = Self((VALUATION_UNSIGNED_ZERO as u64) << 53 | 1);
-    pub const INFINITY: Self = Self((VALUATION_UNSIGNED_MAX as u64) << 53);
-    pub const NAN: Self = Self((VALUATION_UNSIGNED_MAX as u64) << 53 | 1);
+    pub const ONE: Self = Self((EXPONENT_UNSIGNED_ZERO as u64) << 53 | 1);
+    pub const INFINITY: Self = Self((EXPONENT_UNSIGNED_MAX as u64) << 53);
+    pub const NAN: Self = Self((EXPONENT_UNSIGNED_MAX as u64) << 53 | 1);
 
     #[inline(always)]
-    pub const fn valuation(self) -> i16 {
-        self.valuation_unsigned() as i16 - VALUATION_UNSIGNED_ZERO as i16
+    pub const fn exponent(self) -> i16 {
+        self.exponent_unsigned() as i16 - EXPONENT_UNSIGNED_ZERO as i16
     }
 
-    const fn valuation_unsigned(self) -> u16 {
+    const fn exponent_unsigned(self) -> u16 {
         (self.0 >> 53) as u16
     }
 
@@ -37,26 +37,21 @@ impl F64 {
 
     #[inline(always)]
     pub const fn split(self) -> (i16, u64) {
-        (self.valuation(), self.significand())
+        (self.exponent(), self.significand())
     }
 
     const fn split_unsigned(self) -> (u16, u64) {
-        (self.valuation_unsigned(), self.significand())
-    }
-
-    #[inline(always)]
-    pub const fn exponent(self) -> i16 {
-        -self.valuation()
+        (self.exponent_unsigned(), self.significand())
     }
 
     #[inline(always)]
     pub const fn abs(self) -> f64 {
-        f64::from_bits((self.0 & MASK_VALUATION) >> 1 | self.is_nan() as u64)
+        f64::from_bits((self.0 & MASK_EXPONENT) >> 1 | self.is_nan() as u64)
     }
 
     #[inline(always)]
     pub const fn is_nan(self) -> bool {
-        self.0 & MASK_VALUATION == MASK_VALUATION && self.0 & MASK_SIGNIFICAND != 0
+        self.0 & MASK_EXPONENT == MASK_EXPONENT && self.0 & MASK_SIGNIFICAND != 0
     }
 
     #[inline(always)]
@@ -66,7 +61,7 @@ impl F64 {
 
     #[inline(always)]
     pub const fn is_finite(self) -> bool {
-        self.0 & MASK_VALUATION != MASK_VALUATION
+        self.0 & MASK_EXPONENT != MASK_EXPONENT
     }
 
     // using assignment requires const support for mutable references
@@ -93,8 +88,8 @@ impl const Neg for F64 {
 
     #[inline(always)]
     fn neg(self) -> Self::Output {
-        let (v, s) = self.split_unsigned();
-        Self(((v as u64) << 53) | (s.wrapping_neg() & MASK_SIGNIFICAND))
+        let (e, s) = self.split_unsigned();
+        Self(((e as u64) << 53) | (s.wrapping_neg() & MASK_SIGNIFICAND))
     }
 }
 
@@ -104,20 +99,20 @@ impl const Add for F64 {
     // TODO: investigate if this works for non-normal numbers
     #[inline(always)]
     fn add(self, rhs: Self) -> Self::Output {
-        let (v0, s0) = self.split_unsigned();
-        let (v1, s1) = rhs.split_unsigned();
+        let (e0, s0) = self.split_unsigned();
+        let (e1, s1) = rhs.split_unsigned();
 
-        let max_v = v0.max(v1);
-        let (mut s2, carry) = (s0.wrapping_shl((max_v - v0) as u32))
-            .carrying_add(s1.wrapping_shl((max_v - v1) as u32), false);
+        let max_e = e0.max(e1);
+        let (mut s2, carry) = (s0.wrapping_shl((max_e - e0) as u32))
+            .carrying_add(s1.wrapping_shl((max_e - e1) as u32), false);
         let l = s2.trailing_zeros() as u16;
         s2 >>= l;
         s2 = s2 | (s2 == 0 && carry) as u64;
-        let v2 = max_v.saturating_sub(l)
-            | ((v0 == VALUATION_UNSIGNED_MAX || v1 == VALUATION_UNSIGNED_MAX) as u16
-                * VALUATION_UNSIGNED_MAX);
+        let e2 = max_e.saturating_sub(l)
+            | ((e0 == EXPONENT_UNSIGNED_MAX || e1 == EXPONENT_UNSIGNED_MAX) as u16
+                * EXPONENT_UNSIGNED_MAX);
 
-        Self((v2 as u64) << 53 | (s2 & MASK_SIGNIFICAND))
+        Self((e2 as u64) << 53 | (s2 & MASK_SIGNIFICAND))
     }
 }
 
@@ -132,18 +127,18 @@ impl const Mul for F64 {
 
     #[inline(always)]
     fn mul(self, rhs: Self) -> Self::Output {
-        let (v0, s0) = self.split();
-        let (v1, s1) = rhs.split();
+        let (e0, s0) = self.split();
+        let (e1, s1) = rhs.split();
 
-        let mut v2 =
-            ((v0 + v1 + VALUATION_UNSIGNED_ZERO as i16) as u64).min(VALUATION_UNSIGNED_MAX as u64);
+        let mut e2 =
+            ((e0 + e1 + EXPONENT_UNSIGNED_ZERO as i16) as u64).min(EXPONENT_UNSIGNED_MAX as u64);
 
         // handle infinity or nan
-        v2 |= (v0 == VALUATION_MAX || v1 == VALUATION_MAX) as u64 * VALUATION_UNSIGNED_MAX as u64;
+        e2 |= (e0 == EXPONENT_MAX || e1 == EXPONENT_MAX) as u64 * EXPONENT_UNSIGNED_MAX as u64;
         let mut s2 = s0.wrapping_mul(s1) & MASK_SIGNIFICAND;
         s2 |= (self.is_nan() || rhs.is_nan()) as u64;
 
-        Self(v2 << 53 | s2)
+        Self(e2 << 53 | s2)
     }
 }
 
@@ -174,10 +169,10 @@ impl const Div for F64 {
     // FIXME: investigate behavior for nan/inf/subnormals (most definitely does not work)
     #[inline]
     fn div(self, rhs: Self) -> Self::Output {
-        let (v0, s0) = self.split();
-        let (v1, s1) = rhs.split();
+        let (e0, s0) = self.split();
+        let (e1, s1) = rhs.split();
 
-        let v2 = v0 + VALUATION_UNSIGNED_ZERO as i16 - v1;
+        let e2 = e0 + EXPONENT_UNSIGNED_ZERO as i16 - e1;
 
         let (mut t0, mut t1) = (0u64, 1u64);
         let (mut r0, mut r1) = (1u64 << 54, s1);
@@ -190,7 +185,7 @@ impl const Div for F64 {
 
         let inv_s1 = t0;
 
-        Self((v2 as u64) << 53 | (inv_s1.wrapping_mul(s0) & MASK_SIGNIFICAND))
+        Self((e2 as u64) << 53 | (inv_s1.wrapping_mul(s0) & MASK_SIGNIFICAND))
     }
 }
 
@@ -204,7 +199,7 @@ impl const From<u32> for F64 {
     #[inline(always)]
     fn from(x: u32) -> Self {
         let l = x.trailing_zeros() as u16;
-        Self(((VALUATION_UNSIGNED_ZERO - l) as u64) << 53 | (x as u64) >> l)
+        Self(((EXPONENT_UNSIGNED_ZERO - l) as u64) << 53 | (x as u64) >> l)
     }
 }
 
