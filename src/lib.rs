@@ -42,6 +42,10 @@ impl F64 {
         (self.valuation_unsigned(), self.significand())
     }
 
+    pub const fn exponent(self) -> i16 {
+        -self.valuation()
+    }
+
     #[inline(always)]
     pub const fn abs(self) -> f64 {
         f64::from_bits((self.0 & MASK_VALUATION) >> 1 | self.is_nan() as u64)
