@@ -2,8 +2,9 @@
 #![feature(const_trait_impl)]
 #![feature(bigint_helper_methods)]
 #![feature(const_bigint_helper_methods)]
+#![cfg_attr(not(test), no_std)]
 
-use std::{
+use core::{
     fmt::Debug,
     ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign},
 };
@@ -81,7 +82,6 @@ impl F64 {
     }
 
     // formula sourced from "Modern Computer Arithmetic" version 0.5.9, pg. 66
-    #[inline(always)]
     pub const fn recip(self) -> Self {
         let (e, s) = self.split_unsigned();
 
@@ -111,21 +111,19 @@ impl const Add for F64 {
     type Output = Self;
 
     // TODO: investigate if this works for non-normal numbers
-    #[inline(always)]
     fn add(self, rhs: Self) -> Self::Output {
         let (e0, s0) = self.split_unsigned();
         let (e1, s1) = rhs.split_unsigned();
 
         let max_e = e0.max(e1);
-        let mut s2 = (s0.wrapping_shl((max_e - e0) as u32))
+        let s2 = (s0.wrapping_shl((max_e - e0) as u32))
             .wrapping_add(s1.wrapping_shl((max_e - e1) as u32));
         let l = s2.trailing_zeros() as u16;
-        s2 >>= l;
         let e2 = max_e.saturating_sub(l)
             | ((e0 == EXPONENT_UNSIGNED_MAX || e1 == EXPONENT_UNSIGNED_MAX) as u16
                 * EXPONENT_UNSIGNED_MAX);
 
-        Self((e2 as u64) << 53 | (s2 & MASK_SIGNIFICAND))
+        Self((e2 as u64) << 53 | ((s2 >> l) & MASK_SIGNIFICAND))
     }
 }
 
@@ -139,7 +137,6 @@ impl AddAssign for F64 {
 impl const Mul for F64 {
     type Output = Self;
 
-    #[inline(always)]
     fn mul(self, rhs: Self) -> Self::Output {
         let (e0, s0) = self.split();
         let (e1, s1) = rhs.split();
@@ -205,7 +202,7 @@ impl const From<u32> for F64 {
 }
 
 impl Debug for F64 {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_tuple("F64")
             .field(&self.exponent())
             .field(&self.significand())
