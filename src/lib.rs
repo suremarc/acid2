@@ -1,4 +1,5 @@
 #![feature(const_float_bits_conv)]
+#![feature(const_trait_impl)]
 
 use std::ops::{Add, Div, Mul, Neg, Sub};
 
@@ -58,12 +59,12 @@ impl F64 {
         self.0 & MASK_VALUATION != MASK_VALUATION
     }
 
-    pub fn exp4(self) -> Self {
+    pub const fn exp4(self) -> Self {
         todo!()
     }
 }
 
-impl Neg for F64 {
+impl const Neg for F64 {
     type Output = Self;
 
     fn neg(self) -> Self::Output {
@@ -72,7 +73,7 @@ impl Neg for F64 {
     }
 }
 
-impl Add for F64 {
+impl const Add for F64 {
     type Output = Self;
 
     // TODO: investigate if this works for non-normal numbers
@@ -92,7 +93,7 @@ impl Add for F64 {
     }
 }
 
-impl Mul for F64 {
+impl const Mul for F64 {
     type Output = Self;
 
     fn mul(self, rhs: Self) -> Self::Output {
@@ -111,7 +112,7 @@ impl Mul for F64 {
     }
 }
 
-impl Sub for F64 {
+impl const Sub for F64 {
     type Output = Self;
 
     #[inline(always)]
@@ -120,7 +121,7 @@ impl Sub for F64 {
     }
 }
 
-impl Div for F64 {
+impl const Div for F64 {
     type Output = Self;
 
     // FIXME: investigate behavior for nan/inf/subnormals (most definitely does not work)
@@ -146,7 +147,7 @@ impl Div for F64 {
     }
 }
 
-impl From<u32> for F64 {
+impl const From<u32> for F64 {
     #[inline(always)]
     fn from(x: u32) -> Self {
         let l = x.trailing_zeros() as u16;
