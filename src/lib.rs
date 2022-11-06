@@ -1,5 +1,7 @@
 #![feature(const_float_bits_conv)]
 #![feature(const_trait_impl)]
+#![feature(bigint_helper_methods)]
+#![feature(const_bigint_helper_methods)]
 
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
@@ -81,18 +83,23 @@ impl F64 {
     }
 
     #[inline(always)]
+    pub const fn recip(self) -> Self {
+        Self::ONE / self
+    }
+
+    #[inline(always)]
     pub const fn exp4(self) -> Self {
         todo!()
     }
 
     #[allow(clippy::assign_op_pattern)]
-    pub const fn slow_exp(self) -> Self {
+    pub const fn slow_exp(self, num_iterations: u32) -> Self {
         let mut p = Self::ONE;
         let mut f = Self::ONE;
         let mut sum = Self::ZERO;
 
-        let mut i = 0;
-        while i < 54 {
+        let mut i = 0u32;
+        while i < num_iterations {
             sum = sum + p / f;
 
             i += 1;
@@ -124,8 +131,11 @@ impl const Add for F64 {
         let (v1, s1) = rhs.split_unsigned();
 
         let max_v = v0.max(v1);
-        let s2 = (s0.wrapping_shl((max_v - v0) as u32)) + (s1.wrapping_shl((max_v - v1) as u32));
+        let (mut s2, carry) = (s0.wrapping_shl((max_v - v0) as u32))
+            .carrying_add(s1.wrapping_shl((max_v - v1) as u32), false);
         let l = s2.trailing_zeros() as u16;
+        s2 >>= l;
+        s2 = s2 | (s2 == 0 && carry) as u64;
         let v2 = max_v.saturating_sub(l)
             | ((v0 == VALUATION_UNSIGNED_MAX || v1 == VALUATION_UNSIGNED_MAX) as u16
                 * VALUATION_UNSIGNED_MAX);
