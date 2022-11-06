@@ -86,29 +86,6 @@ impl F64 {
     pub const fn recip(self) -> Self {
         Self::ONE / self
     }
-
-    #[inline(always)]
-    pub const fn exp4(self) -> Self {
-        todo!()
-    }
-
-    #[allow(clippy::assign_op_pattern)]
-    pub const fn slow_exp(self, num_iterations: u32) -> Self {
-        let mut p = Self::ONE;
-        let mut f = Self::ONE;
-        let mut sum = Self::ZERO;
-
-        let mut i = 0u32;
-        while i < num_iterations {
-            sum = sum + p / f;
-
-            i += 1;
-            p = p * self;
-            f = f * Self::from(i);
-        }
-
-        sum
-    }
 }
 
 impl const Neg for F64 {
@@ -140,7 +117,7 @@ impl const Add for F64 {
             | ((v0 == VALUATION_UNSIGNED_MAX || v1 == VALUATION_UNSIGNED_MAX) as u16
                 * VALUATION_UNSIGNED_MAX);
 
-        Self((v2 as u64) << 53 | ((s2 >> l) & MASK_SIGNIFICAND))
+        Self((v2 as u64) << 53 | (s2 & MASK_SIGNIFICAND))
     }
 }
 
