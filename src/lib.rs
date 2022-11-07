@@ -286,27 +286,3 @@ mod tests {
         assert!((sqrt * sqrt - n).abs() < EPSILON.sqrt());
     }
 }
-
-#[macro_export]
-macro_rules! repeat {
-    (0, $s:stmt) => {};
-    (1, $s:stmt) => {{
-        $s
-    }};
-    (2, $s:stmt) => {{
-        repeat!(1, $s);
-        $s
-    }};
-    (3, $s:stmt) => {{
-        repeat!(2, $s);
-        $s
-    }};
-    (4,$s:stmt) => {{
-        repeat!(3, $s);
-        $s
-    }};
-    (5,$s:stmt) => {{
-        repeat!(4, $s);
-        $s
-    }};
-}
