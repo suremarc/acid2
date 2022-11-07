@@ -56,10 +56,7 @@ impl F64 {
     // FIXME: this is completely broken for most inputs
     #[inline]
     pub fn fract(self) -> f64 {
-        let (e, s) = self.split_unsigned();
-        let significand = (s >> 1).reverse_bits() >> 12;
-
-        f64::from_bits(((EXPONENT_UNSIGNED_MAX - e) as u64 & 0x7ff) << 52 | significand).fract()
+        ((self.significand() as f64) / self.abs()).fract()
     }
 
     #[inline(always)]
@@ -294,6 +291,6 @@ mod tests {
         println!("{:?}", (sqrt * sqrt - n));
         assert!((sqrt * sqrt - n).abs() < EPSILON.sqrt());
 
-        println!("{}", (F64::from(3) / F64::from(8)).fract());
+        println!("{}", (F64::from(11) / F64::from(8)).fract());
     }
 }
