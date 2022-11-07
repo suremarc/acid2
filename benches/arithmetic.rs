@@ -57,7 +57,7 @@ fn bench_sqrt(c: &mut Criterion) {
             || {
                 thread_rng()
                     .sample_iter::<F64, _>(Standard)
-                    .filter(|&x| x.significand() % 8 == 1)
+                    .filter(|&x| x.significand() % 8 == 1 && x.exponent() % 2 == 0)
                     .take(1000000)
                     .collect()
             },
