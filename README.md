@@ -12,7 +12,7 @@ The additive inverse of any integer in the p-adic numbers is the limit of a conv
 
 As a corollary of the above, since negatives of integers have infinitely many digits, they cannot be represented exactly. Consider the number -1. Its 2-adic representation is the following:
 
-```
+```none
 ...1111111111.0
 ```
 
