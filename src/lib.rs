@@ -70,26 +70,66 @@ impl F64 {
 
     // using assignment requires const support for mutable references
     #[allow(clippy::assign_op_pattern)]
-    pub const fn powi(self, pow: u32) -> Self {
-        let mut res = Self::ONE;
-        let mut i = 0;
-        while i < pow {
-            i += 1;
-            res = res * self;
-        }
+    pub fn sqrt(self) -> Self {
+        let (e, s) = self.split();
+        assert!(e % 2 == 0);
+        assert!(s % 8 == 1);
 
-        res
+        let two_b = self.significand() >> 2;
+        // (x^2 + x - 2b) / (2x + 1)
+        let mut x = two_b; // mod 4
+        let mut two_xp1 = x.wrapping_shl(1).wrapping_add(1);
+        let mut inv_2xp1 = two_xp1;
+        repeat!(
+            3,
+            inv_2xp1 = inv_2xp1.wrapping_mul(2u64.wrapping_sub(two_xp1.wrapping_mul(inv_2xp1)))
+        ); // inverse mod 16 needs 3 repeats
+        assert!(two_xp1.wrapping_mul(inv_2xp1) & 0xffff == 1);
+        x = x.wrapping_sub(
+            x.wrapping_mul(x)
+                .wrapping_add(x)
+                .wrapping_sub(two_b)
+                .wrapping_mul(inv_2xp1),
+        );
+        two_xp1 = x.wrapping_shl(1).wrapping_add(1);
+        inv_2xp1 = two_xp1;
+        repeat!(
+            4,
+            inv_2xp1 = inv_2xp1.wrapping_mul(2u64.wrapping_sub(two_xp1.wrapping_mul(inv_2xp1)))
+        ); // inverse mod 32 needs 4 repeats
+        debug_assert!(two_xp1.wrapping_mul(inv_2xp1) & 0xffffffff == 1);
+        x = x.wrapping_sub(
+            x.wrapping_mul(x)
+                .wrapping_add(x)
+                .wrapping_sub(two_b)
+                .wrapping_mul(inv_2xp1),
+        );
+        two_xp1 = x.wrapping_shl(1).wrapping_add(1);
+        inv_2xp1 = two_xp1;
+        repeat!(
+            5,
+            inv_2xp1 = inv_2xp1.wrapping_mul(2u64.wrapping_sub(two_xp1.wrapping_mul(inv_2xp1)))
+        ); // inverse mod 64 needs 5 repeats
+        debug_assert!(two_xp1.wrapping_mul(inv_2xp1) == 1);
+        x = x.wrapping_sub(
+            x.wrapping_mul(x)
+                .wrapping_add(x)
+                .wrapping_sub(two_b)
+                .wrapping_mul(inv_2xp1),
+        );
+        two_xp1 = x.wrapping_shl(1).wrapping_add(1);
+
+        Self(
+            (((e / 2 + EXPONENT_UNSIGNED_ZERO as i16) as u64) << 53) | (two_xp1 & MASK_SIGNIFICAND),
+        )
     }
 
     // formula sourced from "Modern Computer Arithmetic" version 0.5.9, pg. 66
     pub const fn recip(self) -> Self {
         let (e, s) = self.split_unsigned();
 
-        let mut x = s.wrapping_mul(2u64.wrapping_sub(s.wrapping_mul(s)));
-        x = x.wrapping_mul(2u64.wrapping_sub(s.wrapping_mul(x)));
-        x = x.wrapping_mul(2u64.wrapping_sub(s.wrapping_mul(x)));
-        x = x.wrapping_mul(2u64.wrapping_sub(s.wrapping_mul(x)));
-        x = x.wrapping_mul(2u64.wrapping_sub(s.wrapping_mul(x)));
+        let mut x = s;
+        repeat!(5, x = x.wrapping_mul(2u64.wrapping_sub(s.wrapping_mul(x))));
 
         let exponent = // short circuit to INF if equal to zero
             2046u16.wrapping_sub(e) | (((self.0 == 0) as u16) * EXPONENT_UNSIGNED_MAX);
@@ -254,5 +294,35 @@ mod tests {
         assert_eq!(one.0, F64::ONE.0);
 
         println!("{:?}", (F64::NAN * F64::INFINITY).abs());
+
+        let n = F64::from(49);
+        let sqrt = n.sqrt();
+        println!("{:?}", sqrt);
+        println!("{:?}", sqrt * sqrt - n);
+        assert!((sqrt * sqrt - n).abs() < 1e-6); // this isn't super accurate
     }
+}
+
+#[macro_export]
+macro_rules! repeat {
+    (0, $s:stmt) => {};
+    (1, $s:stmt) => {{
+        $s
+    }};
+    (2, $s:stmt) => {{
+        repeat!(1, $s);
+        $s
+    }};
+    (3, $s:stmt) => {{
+        repeat!(2, $s);
+        $s
+    }};
+    (4,$s:stmt) => {{
+        repeat!(3, $s);
+        $s
+    }};
+    (5,$s:stmt) => {{
+        repeat!(4, $s);
+        $s
+    }};
 }
