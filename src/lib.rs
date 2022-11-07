@@ -24,7 +24,8 @@ use core::{
 /// In many ways, p-adic floating-point arithmetic is simpler than real floating-point arithmetic.
 /// For one, we don't require a sign bit, since all "negative" integers have a convergent representation
 /// as the limit of a sequence of "positive" integers. Really, there is no such thing as a negative number
-/// in the p-adic universe. In any case, this means we have room for one more bit (53) in the significand.
+/// in the p-adic universe; there are negatives of numbers, but there are no numbers that are negative, per se.
+/// In any case, this means we have room for one more bit (53) in the significand.
 ///
 /// The "negative exponent" is the negative of the 2-adic valuation. Because in the 2-adic universe a high
 /// power of 2 makes a number smaller, the negative exponent is more similar to the regular floating-point exponent.
