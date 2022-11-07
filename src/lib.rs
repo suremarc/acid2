@@ -97,18 +97,17 @@ impl F64 {
         )
     }
 
-    // formula sourced from "Modern Computer Arithmetic" version 0.5.9, pg. 66
     pub const fn recip(self) -> Self {
         let (e, s) = self.split_unsigned();
 
-        let x = invert(s, 5);
-
         let exponent = // short circuit to INF if equal to zero
             2046u16.wrapping_sub(e) | (((self.0 == 0) as u16) * EXPONENT_UNSIGNED_MAX);
-        Self((exponent as u64) << 53 | x & MASK_SIGNIFICAND)
+        Self((exponent as u64) << 53 | invert(s, 5) & MASK_SIGNIFICAND)
     }
 }
 
+// find the multiplicative inverse modulo 2^(2^(N+1)), where N is num_iterations
+// formula sourced from "Modern Computer Arithmetic" version 0.5.9, pg. 66
 const fn invert(x: u64, num_iterations: u8) -> u64 {
     let mut i = 0;
     let mut inverse = x;
@@ -235,6 +234,7 @@ impl Debug for F64 {
 
 #[cfg(feature = "rand")]
 impl rand::distributions::Distribution<F64> for rand::distributions::Standard {
+    // Sample from the open disk |x| < 1, with frequency given by the 2-adic Haar measure.
     fn sample<R: rand::Rng + ?Sized>(&self, rng: &mut R) -> F64 {
         let scale = rand_distr::StandardGeometric.sample(rng);
         let mut significand: u64 = self.sample(rng);
