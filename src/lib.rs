@@ -2,13 +2,30 @@
 #![feature(const_trait_impl)]
 #![feature(bigint_helper_methods)]
 #![feature(const_bigint_helper_methods)]
-// #![cfg_attr(not(test), no_std)]
+#![cfg_attr(not(test), no_std)]
 
 use core::{
     fmt::Debug,
     ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign},
 };
 
+/// Binary layout:
+///
+/// ```none
+///     11111111 11100000 00000000 00000000 00000000 00000000 00000000 00000000
+///     ^^^^^^^^^^^^
+///           |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+///           |                                 |
+///     This is the exponent (11 bits)          |
+///                                         This is the significand (53 bits)
+/// ```
+///
+/// In many ways, p-adic floating-point arithmetic is simpler than real floating-point arithmetic.
+/// For one, we don't require a sign bit, since all "negative" integers have a convergent representation
+/// as the limit of a sequence of "positive" integers. Really, there is no such thing as a negative number
+/// in the p-adic universe. In any case, this means we have room for one more bit (53) in the significand.
+///
+/// The least significant bit of the significand is always 1, except for infinity and zero.
 #[derive(Clone, Copy)]
 #[repr(transparent)]
 pub struct F64(u64);
