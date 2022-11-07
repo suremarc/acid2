@@ -68,70 +68,28 @@ impl F64 {
         self.0 & MASK_EXPONENT != MASK_EXPONENT
     }
 
-    // using assignment requires const support for mutable references
     // FIXME: investigate why this doesn't give exact results
-    #[allow(clippy::assign_op_pattern)]
     pub const fn sqrt(self) -> Self {
         let (e, s) = self.split();
         assert!(e % 2 == 0);
         assert!(s % 8 == 1);
 
         let two_b = self.significand() >> 2;
-        // (x^2 + x - 2b) / (2x + 1)
-        let mut x = two_b; // mod 4
+        let mut x = two_b; // mod 4; we proceed by doing a hensel lift
         let mut two_xp1 = x.wrapping_shl(1).wrapping_add(1);
-        let mut inv_2xp1 = two_xp1;
-        repeat!(
-            2,
-            inv_2xp1 = inv_2xp1.wrapping_mul(2u64.wrapping_sub(two_xp1.wrapping_mul(inv_2xp1)))
-        ); // inverse mod 8 needs 2 repeats
-        assert!(two_xp1.wrapping_mul(inv_2xp1) & 0xff == 1);
-        x = x.wrapping_sub(
-            x.wrapping_mul(x)
-                .wrapping_add(x)
-                .wrapping_sub(two_b)
-                .wrapping_mul(inv_2xp1),
-        );
-        two_xp1 = x.wrapping_shl(1) | 1;
-        inv_2xp1 = two_xp1;
-        repeat!(
-            3,
-            inv_2xp1 = inv_2xp1.wrapping_mul(2u64.wrapping_sub(two_xp1.wrapping_mul(inv_2xp1)))
-        ); // inverse mod 16 needs 3 repeats
-        debug_assert!(two_xp1.wrapping_mul(inv_2xp1) & 0xffff == 1);
-        x = x.wrapping_sub(
-            x.wrapping_mul(x)
-                .wrapping_add(x)
-                .wrapping_sub(two_b)
-                .wrapping_mul(inv_2xp1),
-        );
-        two_xp1 = x.wrapping_shl(1) | 1;
-        inv_2xp1 = two_xp1;
-        repeat!(
-            4,
-            inv_2xp1 = inv_2xp1.wrapping_mul(2u64.wrapping_sub(two_xp1.wrapping_mul(inv_2xp1)))
-        ); // inverse mod 32 needs 4 repeats
-        debug_assert!(two_xp1.wrapping_mul(inv_2xp1) & 0xffffffff == 1);
-        x = x.wrapping_sub(
-            x.wrapping_mul(x)
-                .wrapping_add(x)
-                .wrapping_sub(two_b)
-                .wrapping_mul(inv_2xp1),
-        );
-        two_xp1 = x.wrapping_shl(1) | 1;
-        inv_2xp1 = two_xp1;
-        repeat!(
-            5,
-            inv_2xp1 = inv_2xp1.wrapping_mul(2u64.wrapping_sub(two_xp1.wrapping_mul(inv_2xp1)))
-        ); // inverse mod 64 needs 5 repeats
-        debug_assert!(two_xp1.wrapping_mul(inv_2xp1) == 1);
-        x = x.wrapping_sub(
-            x.wrapping_mul(x)
-                .wrapping_add(x)
-                .wrapping_sub(two_b)
-                .wrapping_mul(inv_2xp1),
-        );
-        two_xp1 = x.wrapping_shl(1) | 1;
+        let mut i = 2;
+        while i < 6 {
+            // x' = x - (x^2 + x - 2b) / (2x + 1)
+            x = x.wrapping_sub(
+                x.wrapping_mul(x)
+                    .wrapping_add(x)
+                    .wrapping_sub(two_b)
+                    .wrapping_mul(invert(two_xp1, i)),
+            );
+            two_xp1 = x.wrapping_shl(1) | 1;
+            i += 1;
+        }
+
         // debug_assert!(two_xp1.wrapping_mul(two_xp1) & MASK_SIGNIFICAND == s);
 
         Self(
@@ -143,13 +101,23 @@ impl F64 {
     pub const fn recip(self) -> Self {
         let (e, s) = self.split_unsigned();
 
-        let mut x = s;
-        repeat!(5, x = x.wrapping_mul(2u64.wrapping_sub(s.wrapping_mul(x))));
+        let x = invert(s, 5);
 
         let exponent = // short circuit to INF if equal to zero
             2046u16.wrapping_sub(e) | (((self.0 == 0) as u16) * EXPONENT_UNSIGNED_MAX);
         Self((exponent as u64) << 53 | x & MASK_SIGNIFICAND)
     }
+}
+
+const fn invert(x: u64, num_iterations: u8) -> u64 {
+    let mut i = 0;
+    let mut inverse = x;
+    while i < num_iterations {
+        inverse = inverse.wrapping_mul(2u64.wrapping_sub(x.wrapping_mul(inverse)));
+        i += 1;
+    }
+
+    inverse
 }
 
 impl const Neg for F64 {
