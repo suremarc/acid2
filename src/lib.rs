@@ -70,7 +70,7 @@ impl F64 {
 
     // using assignment requires const support for mutable references
     #[allow(clippy::assign_op_pattern)]
-    pub fn sqrt(self) -> Self {
+    pub const fn sqrt(self) -> Self {
         let (e, s) = self.split();
         assert!(e % 2 == 0);
         assert!(s % 8 == 1);
