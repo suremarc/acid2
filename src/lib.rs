@@ -78,14 +78,27 @@ impl F64 {
 
         let two_b = self.significand() >> 2;
         // (x^2 + x - 2b) / (2x + 1)
-        let mut x = two_b.wrapping_neg(); // mod 4
+        let mut x = two_b; // mod 4
         let mut two_xp1 = x.wrapping_shl(1).wrapping_add(1);
         let mut inv_2xp1 = two_xp1;
+        repeat!(
+            2,
+            inv_2xp1 = inv_2xp1.wrapping_mul(2u64.wrapping_sub(two_xp1.wrapping_mul(inv_2xp1)))
+        ); // inverse mod 8 needs 2 repeats
+        assert!(two_xp1.wrapping_mul(inv_2xp1) & 0xff == 1);
+        x = x.wrapping_sub(
+            x.wrapping_mul(x)
+                .wrapping_add(x)
+                .wrapping_sub(two_b)
+                .wrapping_mul(inv_2xp1),
+        );
+        two_xp1 = x.wrapping_shl(1) | 1;
+        inv_2xp1 = two_xp1;
         repeat!(
             3,
             inv_2xp1 = inv_2xp1.wrapping_mul(2u64.wrapping_sub(two_xp1.wrapping_mul(inv_2xp1)))
         ); // inverse mod 16 needs 3 repeats
-        assert!(two_xp1.wrapping_mul(inv_2xp1) & 0xffff == 1);
+        debug_assert!(two_xp1.wrapping_mul(inv_2xp1) & 0xffff == 1);
         x = x.wrapping_sub(
             x.wrapping_mul(x)
                 .wrapping_add(x)
