@@ -78,7 +78,7 @@ impl F64 {
 
         let two_b = self.significand() >> 2;
         // (x^2 + x - 2b) / (2x + 1)
-        let mut x = two_b; // mod 4
+        let mut x = two_b.wrapping_neg(); // mod 4
         let mut two_xp1 = x.wrapping_shl(1).wrapping_add(1);
         let mut inv_2xp1 = two_xp1;
         repeat!(
@@ -297,11 +297,12 @@ mod tests {
 
         println!("{:?}", (F64::NAN * F64::INFINITY).abs());
 
-        let n = F64::from(17);
+        let n = F64::from(65);
         let sqrt = n.sqrt();
         println!("{:?}", sqrt);
-        println!("{:?}", sqrt * sqrt - n);
-        assert!((sqrt * sqrt - n).abs() < 1e-5); // this isn't very accurate
+        println!("{:?}", sqrt * sqrt);
+        println!("{:?}", (sqrt * sqrt - n));
+        assert!((sqrt * sqrt - n).abs() < EPSILON.sqrt());
     }
 }
 
