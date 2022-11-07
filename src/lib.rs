@@ -2,7 +2,7 @@
 #![feature(const_trait_impl)]
 #![feature(bigint_helper_methods)]
 #![feature(const_bigint_helper_methods)]
-#![cfg_attr(not(test), no_std)]
+// #![cfg_attr(not(test), no_std)]
 
 use core::{
     fmt::Debug,
@@ -51,6 +51,15 @@ impl F64 {
     #[inline(always)]
     pub const fn abs(self) -> f64 {
         f64::from_bits((self.0 & MASK_EXPONENT) >> 1 | self.is_nan() as u64)
+    }
+
+    // FIXME: this is completely broken for most inputs
+    #[inline]
+    pub fn fract(self) -> f64 {
+        let (e, s) = self.split_unsigned();
+        let significand = (s >> 1).reverse_bits() >> 12;
+
+        f64::from_bits(((EXPONENT_UNSIGNED_MAX - e) as u64 & 0x7ff) << 52 | significand).fract()
     }
 
     #[inline(always)]
@@ -284,5 +293,7 @@ mod tests {
         println!("{:?}", sqrt * sqrt);
         println!("{:?}", (sqrt * sqrt - n));
         assert!((sqrt * sqrt - n).abs() < EPSILON.sqrt());
+
+        println!("{}", (F64::from(3) / F64::from(8)).fract());
     }
 }
