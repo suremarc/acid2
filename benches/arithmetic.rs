@@ -56,9 +56,9 @@ fn bench_sqrt(c: &mut Criterion) {
         b.iter_batched(
             || {
                 thread_rng()
-                    .sample_iter(Standard)
+                    .sample_iter::<F64, _>(Standard)
+                    .filter(|&x| x.significand() % 8 == 1)
                     .take(1000000)
-                    .map(|x| F64::from(8) * x + F64::ONE)
                     .collect()
             },
             |data: Vec<F64>| {

@@ -69,6 +69,7 @@ impl F64 {
     }
 
     // using assignment requires const support for mutable references
+    // FIXME: investigate why this doesn't give exact results
     #[allow(clippy::assign_op_pattern)]
     pub const fn sqrt(self) -> Self {
         let (e, s) = self.split();
@@ -91,7 +92,7 @@ impl F64 {
                 .wrapping_sub(two_b)
                 .wrapping_mul(inv_2xp1),
         );
-        two_xp1 = x.wrapping_shl(1).wrapping_add(1);
+        two_xp1 = x.wrapping_shl(1) | 1;
         inv_2xp1 = two_xp1;
         repeat!(
             4,
@@ -104,7 +105,7 @@ impl F64 {
                 .wrapping_sub(two_b)
                 .wrapping_mul(inv_2xp1),
         );
-        two_xp1 = x.wrapping_shl(1).wrapping_add(1);
+        two_xp1 = x.wrapping_shl(1) | 1;
         inv_2xp1 = two_xp1;
         repeat!(
             5,
@@ -117,7 +118,8 @@ impl F64 {
                 .wrapping_sub(two_b)
                 .wrapping_mul(inv_2xp1),
         );
-        two_xp1 = x.wrapping_shl(1).wrapping_add(1);
+        two_xp1 = x.wrapping_shl(1) | 1;
+        // debug_assert!(two_xp1.wrapping_mul(two_xp1) & MASK_SIGNIFICAND == s);
 
         Self(
             (((e / 2 + EXPONENT_UNSIGNED_ZERO as i16) as u64) << 53) | (two_xp1 & MASK_SIGNIFICAND),
@@ -295,11 +297,11 @@ mod tests {
 
         println!("{:?}", (F64::NAN * F64::INFINITY).abs());
 
-        let n = F64::from(49);
+        let n = F64::from(17);
         let sqrt = n.sqrt();
         println!("{:?}", sqrt);
         println!("{:?}", sqrt * sqrt - n);
-        assert!((sqrt * sqrt - n).abs() < 1e-6); // this isn't super accurate
+        assert!((sqrt * sqrt - n).abs() < 1e-5); // this isn't very accurate
     }
 }
 
