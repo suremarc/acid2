@@ -122,6 +122,9 @@ impl F64 {
     /// let f = F64::from(72);
     ///
     /// assert_eq!(f.abs(), 2f64.powi(-3));
+    /// assert_eq!(F64::ZERO.abs(), 0.0);
+    /// assert_eq!(F64::INFINITY.abs(), f64::INFINITY);
+    /// assert!(F64::NAN.abs().is_nan());
     /// ```
     #[inline(always)]
     pub const fn abs(self) -> f64 {
@@ -211,9 +214,10 @@ impl F64 {
     /// ```
     /// use acid2::F64;
     ///
-    /// let f = F64::from(25);
+    /// let f = F64::from(81);
     /// let sqrt = f.sqrt();
     ///
+    /// assert!((sqrt - F64::from(9)).abs() < 1e-15); // this won't always be true for perfect squares, but in this case it is
     /// assert!((sqrt * sqrt - f).abs() < 1e-7);
     /// ```
     // FIXME: investigate why this doesn't give exact results
@@ -293,6 +297,18 @@ impl const Neg for F64 {
 impl const Add for F64 {
     type Output = Self;
 
+    /// Computes the 2-adic sum of two numbers, truncating on the left side where necessary.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use acid2::F64;
+    ///
+    /// let x = F64::from(13);
+    /// let y = F64::from(11);
+    ///
+    /// assert!((x + y - F64::from(24)).abs() < 1e-15);
+    /// ```
     // TODO: investigate if this works for non-normal numbers
     fn add(self, rhs: Self) -> Self::Output {
         let (e0, s0) = self.neg_exponent_unsigned_and_significand();
@@ -320,6 +336,18 @@ impl AddAssign for F64 {
 impl const Mul for F64 {
     type Output = Self;
 
+    /// Computes the 2-adic product of two numbers, truncating on the left side where necessary.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use acid2::F64;
+    ///
+    /// let x = F64::from(14);
+    /// let y = F64::from(6);
+    ///
+    /// assert!((x * y - F64::from(84)).abs() < 1e-15);
+    /// ```
     fn mul(self, rhs: Self) -> Self::Output {
         let (e0, s0) = self.neg_exponent_and_significand();
         let (e1, s1) = rhs.neg_exponent_and_significand();
@@ -347,6 +375,20 @@ impl MulAssign for F64 {
 impl const Sub for F64 {
     type Output = Self;
 
+    /// Computes the 2-adic difference of two numbers, truncating on the left side where necessary.
+    ///
+    /// `x - y` is exactly equivalent to `x + (-y)`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use acid2::F64;
+    ///
+    /// let x = F64::from(13);
+    /// let y = F64::from(11);
+    ///
+    /// assert!((x - y - F64::from(2)).abs() < 1e-15);
+    /// ```
     #[inline(always)]
     fn sub(self, rhs: Self) -> Self::Output {
         self + (-rhs)
@@ -363,6 +405,20 @@ impl SubAssign for F64 {
 impl const Div for F64 {
     type Output = Self;
 
+    /// Computes the 2-adic difference of two numbers, truncating on the left side where necessary.
+    ///
+    /// `x / y` is exactly equivalent to `x * y.recip()`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use acid2::F64;
+    ///
+    /// let x = F64::from(18);
+    /// let y = F64::from(6);
+    ///
+    /// assert!((x / y - F64::from(3)).abs() < 1e-15);
+    /// ```
     #[inline]
     #[allow(clippy::suspicious_arithmetic_impl)] // lol
     fn div(self, rhs: Self) -> Self::Output {
@@ -406,47 +462,4 @@ impl rand::distributions::Distribution<F64> for rand::distributions::Standard {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    const EPSILON: f64 = 1e-15;
-
-    #[test]
-    fn it_works() {
-        let x = F64::from(25) - F64::from(39);
-        println!("{}", x.abs());
-        let y = F64::from(39) - F64::from(25);
-        println!("{}", y.abs());
-        let z = x + y;
-        println!("{}", z.abs());
-        assert!(z.abs() < EPSILON);
-        let w = F64::from(2) * F64::from(4);
-        assert_eq!(w.0, F64::from(8).0);
-
-        let frac = F64::from(13) / F64::from(11) / F64::from(11);
-        println!("{:?}", frac);
-        let thirteen = frac * F64::from(121);
-        println!("{:?}", thirteen);
-        assert!((thirteen - F64::from(13)).abs() < EPSILON);
-
-        println!("{:?}", (F64::from(2) * F64::INFINITY));
-        assert!((F64::from(2) * F64::INFINITY).is_infinite());
-        println!("{:?}", F64::INFINITY.abs());
-        assert!(F64::INFINITY.abs().is_infinite());
-
-        let one = F64::from(3) / F64::from(8) + F64::from(5) / F64::from(8);
-        println!("{:?}", one);
-        assert_eq!(one.0, F64::ONE.0);
-
-        println!("{:?}", (F64::NAN * F64::INFINITY).abs());
-
-        let n = F64::from(65);
-        let sqrt = n.sqrt();
-        println!("{:?}", sqrt);
-        println!("{:?}", sqrt * sqrt);
-        println!("{:?}", (sqrt * sqrt - n));
-        assert!((sqrt * sqrt - n).abs() < EPSILON.sqrt());
-
-        println!("{}", (F64::from(11) / F64::from(8)).fract());
-    }
-}
+mod tests {}
