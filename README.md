@@ -16,6 +16,8 @@ Explicitly branchless code is preferred where possible, at the expense of some r
 
 Having numerous, table-driven unit tests with cases covering over/underflow and inf/NaN would be ideal. Manually constructed, hand-worked test cases are probably still useful, even for something as complex as floating-point arithmetic.
 
+Fuzz-testing might also be useful for detecting broken invariants. Currently, the only invariant is that the significand is odd. This invariant may disappear if we change the internal representation to have an implicit lowest bit of 1.
+
 ### numpy support
 
 Python support would make experimentation with this library extremely quick. More investigation is needed as to what would be involved here (read: I have no idea how to do this).
