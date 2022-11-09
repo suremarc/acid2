@@ -2,7 +2,33 @@
 
 2-adic floating-point implementation, for maximum hardware affinity and performance.
 
-## Floating-point arithmetic: comparing p-adic vs. real numbers
+This project is in its _very_ early stages. No guarantees can be made about its correctness until the testing infrastructure is more robust.
+
+## Goals
+
+The goal of this project is to implement 2-adic floating point arithmetic with maximum performance. Currently, the only known use case is for approximating p-adic integrals, where exactness is not a hard requirement.
+
+Explicitly branchless code is preferred where possible, at the expense of some readability. However, since 2-adic addition requires counting trailing zeros, this may not be possible for some architectures. On some x86 platforms, LLVM's `cttz` intrinsic is implemented using a bitscan (`bsfl`) and a conditional jump.
+
+## Feature wishlist
+
+### More tests
+
+Having numerous, table-driven unit tests with cases covering over/underflow and inf/NaN would be ideal. Manually constructed, hand-worked test cases are probably still useful, even for something as complex as floating-point arithmetic.
+
+### numpy support
+
+Python support would make experimentation with this library extremely quick. More investigation is needed as to what would be involved here (read: I have no idea how to do this).
+
+### String conversions
+
+Being able to convert to/from string representations of p-adic numbers would be very helpful in debugging -- not just for the author, but presumably for consumers of this library as well. Currently there is a placeholder implementation of `fmt::Debug` that just shows the exponent and significand as a tuple.
+
+### Subnormals
+
+This is less of a wishlist item, and more a note that that not much thought has been given to subnormal numbers and how they're handled, as of now.
+
+## Comparing p-adic vs. real floating-point numbers
 
 ### p-adic floating-point numbers don't have a sign bit
 
