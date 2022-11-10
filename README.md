@@ -1,3 +1,16 @@
+[![Build Status][actions-badge]][actions-url]
+![License][license-badge]
+[![Crates.io][crates-badge]][crates-url]
+[![API](https://docs.rs/acid2/badge.svg)](https://docs.rs/acid2)
+
+[actions-badge]: https://github.com/suremarc/acid2/workflows/Tests/badge.svg?event=push
+[actions-url]: https://github.com/suremarc/acid2/actions?query=workflow%3ATests+branch%3Amaster
+[docs-badge]: https://img.shields.io/docsrs/acid2
+[docs-url]: https://docs.rs/acid2
+[license-badge]: https://img.shields.io/badge/license-MIT_OR_Apache--2.0-blue.svg
+[crates-badge]: https://img.shields.io/crates/v/acid2.svg
+[crates-url]: https://crates.io/crates/acid2
+
 # acid2
 
 2-adic floating-point implementation, for maximum hardware affinity and performance.
