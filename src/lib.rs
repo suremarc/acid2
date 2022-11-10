@@ -1,7 +1,6 @@
 #![feature(const_float_bits_conv)]
 #![feature(const_trait_impl)]
-#![feature(bigint_helper_methods)]
-#![feature(const_bigint_helper_methods)]
+#![feature(doc_cfg)]
 #![cfg_attr(not(test), no_std)]
 
 use core::{
@@ -143,9 +142,9 @@ impl F64 {
     /// assert_eq!(f.fract(), 0.625);
     /// ```
     #[inline]
-    #[cfg(feature = "std")]
     pub fn fract(self) -> f64 {
-        ((self.significand() as f64) / self.abs()).fract()
+        let x = (self.significand() as f64) / self.abs();
+        x - libm::trunc(x)
     }
 
     /// Whether or not this number is NaN.
@@ -452,6 +451,7 @@ impl Debug for F64 {
 }
 
 #[cfg(feature = "rand")]
+#[doc(cfg(feature = "rand"))]
 impl rand::distributions::Distribution<F64> for rand::distributions::Standard {
     // Sample from the open disk |x| < 1, with frequency given by the 2-adic Haar measure.
     fn sample<R: rand::Rng + ?Sized>(&self, rng: &mut R) -> F64 {

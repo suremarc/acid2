@@ -14,6 +14,7 @@ keywords = ["math", "modular", "float", "padic", "number"]
 categories = ["mathematics", "no-std"]
 
 [dependencies]
+libm = "0.2"
 rand = {version = "0.8.5", optional = true}
 rand_distr = {version = "0.4.3", optional = true}
 
