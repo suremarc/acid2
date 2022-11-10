@@ -1,4 +1,4 @@
-name: Tests
+name: build
 
 on:
   push:
@@ -24,7 +24,13 @@ jobs:
       uses: actions-rs/cargo@v1
       with:
         command: build
-        args: --verbose --all-features
+        args: --verbose --all-targets --all-features
+
+    - name: Lint
+      uses: actions-rs/cargo@v1
+      with:
+        command: clippy
+        args: --all-targets --all-features -- -D warnings
 
     - name: Run tests
       uses: actions-rs/cargo@v1

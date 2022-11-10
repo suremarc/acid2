@@ -3,8 +3,8 @@
 [![Crates.io][crates-badge]][crates-url]
 [![API](https://docs.rs/acid2/badge.svg)](https://docs.rs/acid2)
 
-[actions-badge]: https://github.com/suremarc/acid2/workflows/Tests/badge.svg?event=push
-[actions-url]: https://github.com/suremarc/acid2/actions?query=workflow%3ATests+branch%3Amaster
+[actions-badge]: https://github.com/suremarc/acid2/workflows/build/badge.svg?event=push
+[actions-url]: https://github.com/suremarc/acid2/actions?query=workflow%3Abuild+branch%3Amaster
 [docs-badge]: https://img.shields.io/docsrs/acid2
 [docs-url]: https://docs.rs/acid2
 [license-badge]: https://img.shields.io/badge/license-MIT_OR_Apache--2.0-blue.svg
