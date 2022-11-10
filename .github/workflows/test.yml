@@ -19,7 +19,7 @@ jobs:
         toolchain: nightly
         override: true
         components: rustfmt, clippy
-      
+
     - name: Build
       uses: actions-rs/cargo@v1
       with:
