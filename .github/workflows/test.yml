@@ -17,8 +17,17 @@ jobs:
     - uses: actions-rs/toolchain@v1
       with:
         toolchain: nightly
+        override: true
+        components: rustfmt, clippy
+      
+    - name: Build
+      uses: actions-rs/cargo@v1
+      with:
+        command: build
+        args: --verbose
 
-    - uses: actions-rs/cargo@v1
-      name: Run tests
+    - name: Run tests
+      uses: actions-rs/cargo@v1
       with:
         command: test
+        args: --verbose
