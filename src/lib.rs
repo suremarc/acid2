@@ -162,7 +162,7 @@ impl F64 {
     /// assert!(y.is_nan());
     /// assert!(!z.is_nan());
     /// ```
-    #[inline(always)]
+    #[inline]
     pub const fn is_nan(self) -> bool {
         self.0 & MASK_EXPONENT == MASK_EXPONENT && self.0 & MASK_SIGNIFICAND != 0
     }
@@ -326,10 +326,26 @@ impl const Add for F64 {
     }
 }
 
+forward_ref_binop!(impl Add, add for F64, F64);
+
 impl AddAssign for F64 {
-    #[inline(always)]
+    #[inline]
     fn add_assign(&mut self, rhs: Self) {
         *self = *self + rhs;
+    }
+}
+
+impl core::iter::Sum for F64 {
+    #[inline]
+    fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
+        iter.fold(F64::ZERO, |a, b| a + b)
+    }
+}
+
+impl<'a> core::iter::Sum<&'a Self> for F64 {
+    #[inline]
+    fn sum<I: Iterator<Item = &'a Self>>(iter: I) -> Self {
+        iter.fold(F64::ZERO, |a, b| a + b)
     }
 }
 
@@ -359,9 +375,25 @@ impl const Mul for F64 {
         e2 |= (e0 == NEG_EXPONENT_MAX || e1 == NEG_EXPONENT_MAX) as u64
             * NEG_EXPONENT_UNSIGNED_MAX as u64;
         let mut s2 = s0.wrapping_mul(s1) & MASK_SIGNIFICAND;
-        s2 |= (self.is_nan() || rhs.is_nan()) as u64;
+        s2 |= self.is_nan() as u64 | rhs.is_nan() as u64;
 
         Self(e2 << 53 | s2)
+    }
+}
+
+forward_ref_binop!(impl Mul, mul for F64, F64);
+
+impl core::iter::Product for F64 {
+    #[inline]
+    fn product<I: Iterator<Item = Self>>(iter: I) -> Self {
+        iter.fold(F64::ZERO, |a, b| a * b)
+    }
+}
+
+impl<'a> core::iter::Product<&'a Self> for F64 {
+    #[inline]
+    fn product<I: Iterator<Item = &'a Self>>(iter: I) -> Self {
+        iter.fold(F64::ZERO, |a, b| a * b)
     }
 }
 
@@ -454,6 +486,7 @@ impl Debug for F64 {
 #[doc(cfg(feature = "rand"))]
 impl rand::distributions::Distribution<F64> for rand::distributions::Standard {
     /// Sample from the disk |x| <= 1, with frequency given by the 2-adic Haar measure.
+    #[inline]
     fn sample<R: rand::Rng + ?Sized>(&self, rng: &mut R) -> F64 {
         let scale = rand_distr::StandardGeometric.sample(rng);
         let mut significand: u64 = self.sample(rng);
@@ -464,3 +497,35 @@ impl rand::distributions::Distribution<F64> for rand::distributions::Standard {
 
 #[cfg(test)]
 mod tests {}
+
+#[macro_export]
+macro_rules! forward_ref_binop {
+    (impl $imp:ident, $method:ident for $t:ty, $u:ty) => {
+        impl<'a> $imp<$u> for &'a $t {
+            type Output = <$t as $imp<$u>>::Output;
+
+            #[inline]
+            fn $method(self, other: $u) -> <$t as $imp<$u>>::Output {
+                $imp::$method(*self, other)
+            }
+        }
+
+        impl<'a> $imp<&'a $u> for $t {
+            type Output = <$t as $imp<$u>>::Output;
+
+            #[inline]
+            fn $method(self, other: &'a $u) -> <$t as $imp<$u>>::Output {
+                $imp::$method(self, *other)
+            }
+        }
+
+        impl<'a, 'b> $imp<&'a $u> for &'b $t {
+            type Output = <$t as $imp<$u>>::Output;
+
+            #[inline]
+            fn $method(self, other: &'a $u) -> <$t as $imp<$u>>::Output {
+                $imp::$method(*self, *other)
+            }
+        }
+    };
+}
