@@ -143,6 +143,7 @@ impl F64 {
     /// assert_eq!(f.fract(), 0.625);
     /// ```
     #[inline]
+    #[cfg(feature = "std")]
     pub fn fract(self) -> f64 {
         ((self.significand() as f64) / self.abs()).fract()
     }

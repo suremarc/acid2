@@ -1,25 +1,32 @@
 [package]
 name = "acid2"
 version = "0.1.0"
+authors = ["Matthew Cramerus <suremarc.pm@gmail.com>"]
 edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+resolver = "2"
+description = "256-bit integer implementation"
+documentation = "https://docs.rs/acid2"
+readme = "README.md"
+homepage = "https://github.com/suremarc/acid2"
+repository = "https://github.com/suremarc/acid2"
+license = "MIT OR Apache-2.0"
+keywords = ["mathematics", "modular", "modulo", "floating", "point", "padic", "number"]
+categories = ["mathematics", "no-std"]
 
 [dependencies]
 rand = {version = "0.8.5", optional = true}
 rand_distr = {version = "0.4.3", optional = true}
 
 [features]
-default = ["rand"]
+default = []
 rand = ["dep:rand", "dep:rand_distr"]
 
 [dev-dependencies]
 criterion = "0.3"
+# This is an ugly hack to include certain features in tests & benchmarks. 
+# See here: https://github.com/rust-lang/cargo/issues/2911#issuecomment-749580481
+acid2 = { path = ".", features = ["rand"] }
 
 [[bench]]
 name = "arithmetic"
 harness = false
-
-[profile.release-with-debug]
-inherits = "release"
-debug = true
