@@ -10,7 +10,7 @@ readme = "README.md"
 homepage = "https://github.com/suremarc/acid2"
 repository = "https://github.com/suremarc/acid2"
 license = "MIT OR Apache-2.0"
-keywords = ["mathematics", "modular", "modulo", "floating", "point", "padic", "number"]
+keywords = ["math", "modular", "float", "padic", "number"]
 categories = ["mathematics", "no-std"]
 
 [dependencies]
