@@ -453,7 +453,7 @@ impl Debug for F64 {
 #[cfg(feature = "rand")]
 #[doc(cfg(feature = "rand"))]
 impl rand::distributions::Distribution<F64> for rand::distributions::Standard {
-    // Sample from the open disk |x| < 1, with frequency given by the 2-adic Haar measure.
+    /// Sample from the disk |x| <= 1, with frequency given by the 2-adic Haar measure.
     fn sample<R: rand::Rng + ?Sized>(&self, rng: &mut R) -> F64 {
         let scale = rand_distr::StandardGeometric.sample(rng);
         let mut significand: u64 = self.sample(rng);
