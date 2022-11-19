@@ -7,6 +7,9 @@ use core::{
     fmt::Debug,
     ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign},
 };
+
+use macros::forward_ref_binop;
+
 /// Double-precision floating-point 2-adic values.
 ///
 /// Binary layout:
@@ -269,6 +272,8 @@ impl F64 {
             2046u16.wrapping_sub(e) | (((self.0 == 0) as u16) * NEG_EXPONENT_UNSIGNED_MAX);
         Self((exponent as u64) << 53 | invert(s, 5) & MASK_SIGNIFICAND)
     }
+
+    // pub const fn log
 }
 
 // find the multiplicative inverse modulo 2^(2^(N+1)), where N is num_iterations
@@ -498,34 +503,37 @@ impl rand::distributions::Distribution<F64> for rand::distributions::Standard {
 #[cfg(test)]
 mod tests {}
 
-#[macro_export]
-macro_rules! forward_ref_binop {
-    (impl $imp:ident, $method:ident for $t:ty, $u:ty) => {
-        impl<'a> $imp<$u> for &'a $t {
-            type Output = <$t as $imp<$u>>::Output;
+mod macros {
+    macro_rules! forward_ref_binop {
+        (impl $imp:ident, $method:ident for $t:ty, $u:ty) => {
+            impl<'a> $imp<$u> for &'a $t {
+                type Output = <$t as $imp<$u>>::Output;
 
-            #[inline]
-            fn $method(self, other: $u) -> <$t as $imp<$u>>::Output {
-                $imp::$method(*self, other)
+                #[inline]
+                fn $method(self, other: $u) -> <$t as $imp<$u>>::Output {
+                    $imp::$method(*self, other)
+                }
             }
-        }
 
-        impl<'a> $imp<&'a $u> for $t {
-            type Output = <$t as $imp<$u>>::Output;
+            impl<'a> $imp<&'a $u> for $t {
+                type Output = <$t as $imp<$u>>::Output;
 
-            #[inline]
-            fn $method(self, other: &'a $u) -> <$t as $imp<$u>>::Output {
-                $imp::$method(self, *other)
+                #[inline]
+                fn $method(self, other: &'a $u) -> <$t as $imp<$u>>::Output {
+                    $imp::$method(self, *other)
+                }
             }
-        }
 
-        impl<'a, 'b> $imp<&'a $u> for &'b $t {
-            type Output = <$t as $imp<$u>>::Output;
+            impl<'a, 'b> $imp<&'a $u> for &'b $t {
+                type Output = <$t as $imp<$u>>::Output;
 
-            #[inline]
-            fn $method(self, other: &'a $u) -> <$t as $imp<$u>>::Output {
-                $imp::$method(*self, *other)
+                #[inline]
+                fn $method(self, other: &'a $u) -> <$t as $imp<$u>>::Output {
+                    $imp::$method(*self, *other)
+                }
             }
-        }
-    };
+        };
+    }
+
+    pub(crate) use forward_ref_binop;
 }
