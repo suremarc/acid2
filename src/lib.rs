@@ -272,8 +272,6 @@ impl F64 {
             2046u16.wrapping_sub(e) | (((self.0 == 0) as u16) * NEG_EXPONENT_UNSIGNED_MAX);
         Self((exponent as u64) << 53 | invert(s, 5) & MASK_SIGNIFICAND)
     }
-
-    // pub const fn log
 }
 
 // find the multiplicative inverse modulo 2^(2^(N+1)), where N is num_iterations
