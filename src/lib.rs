@@ -37,21 +37,21 @@ use macros::forward_ref_binop;
 #[repr(transparent)]
 pub struct F64(u64);
 
-const MASK_SIGNIFICAND: u64 = 0x1fffffffffffff;
-const MASK_EXPONENT: u64 = !MASK_SIGNIFICAND;
-const NEG_EXPONENT_MAX: i16 = 1024;
-const NEG_EXPONENT_UNSIGNED_MAX: u16 = 2047;
-const NEG_EXPONENT_UNSIGNED_ZERO: u16 = 1023;
-
 impl F64 {
+    const MASK_SIGNIFICAND: u64 = 0x1fffffffffffff;
+    const MASK_EXPONENT: u64 = !Self::MASK_SIGNIFICAND;
+    const NEG_EXPONENT_MAX: i16 = 1024;
+    const NEG_EXPONENT_UNSIGNED_MAX: u16 = 2047;
+    const NEG_EXPONENT_UNSIGNED_ZERO: u16 = 1023;
+
     pub const ZERO: Self = Self(0);
-    pub const ONE: Self = Self((NEG_EXPONENT_UNSIGNED_ZERO as u64) << 53 | 1);
-    pub const INFINITY: Self = Self((NEG_EXPONENT_UNSIGNED_MAX as u64) << 53);
-    pub const NAN: Self = Self((NEG_EXPONENT_UNSIGNED_MAX as u64) << 53 | 1);
+    pub const ONE: Self = Self((Self::NEG_EXPONENT_UNSIGNED_ZERO as u64) << 53 | 1);
+    pub const INFINITY: Self = Self((Self::NEG_EXPONENT_UNSIGNED_MAX as u64) << 53);
+    pub const NAN: Self = Self((Self::NEG_EXPONENT_UNSIGNED_MAX as u64) << 53 | 1);
 
     #[inline(always)]
     const fn neg_exponent(self) -> i16 {
-        self.neg_exponent_unsigned() as i16 - NEG_EXPONENT_UNSIGNED_ZERO as i16
+        self.neg_exponent_unsigned() as i16 - Self::NEG_EXPONENT_UNSIGNED_ZERO as i16
     }
 
     const fn neg_exponent_unsigned(self) -> u16 {
@@ -87,7 +87,7 @@ impl F64 {
     /// ```
     #[inline(always)]
     pub const fn significand(self) -> u64 {
-        self.0 & MASK_SIGNIFICAND
+        self.0 & Self::MASK_SIGNIFICAND
     }
 
     const fn neg_exponent_and_significand(self) -> (i16, u64) {
@@ -130,7 +130,7 @@ impl F64 {
     /// ```
     #[inline(always)]
     pub const fn abs(self) -> f64 {
-        f64::from_bits((self.0 & MASK_EXPONENT) >> 1 | self.is_nan() as u64)
+        f64::from_bits((self.0 & Self::MASK_EXPONENT) >> 1 | self.is_nan() as u64)
     }
 
     /// The fractional part of this 2-adic number, representation as a real floating-point number.
@@ -167,7 +167,7 @@ impl F64 {
     /// ```
     #[inline]
     pub const fn is_nan(self) -> bool {
-        self.0 & MASK_EXPONENT == MASK_EXPONENT && self.0 & MASK_SIGNIFICAND != 0
+        self.0 & Self::MASK_EXPONENT == Self::MASK_EXPONENT && self.0 & Self::MASK_SIGNIFICAND != 0
     }
 
     /// Whether or not this number is infinite.
@@ -207,7 +207,7 @@ impl F64 {
     /// ```
     #[inline(always)]
     pub const fn is_finite(self) -> bool {
-        self.0 & MASK_EXPONENT != MASK_EXPONENT
+        self.0 & Self::MASK_EXPONENT != Self::MASK_EXPONENT
     }
 
     /// Computes the 2-adic square root of this number.
@@ -245,11 +245,11 @@ impl F64 {
             i += 1;
         }
 
-        // debug_assert!(two_xp1.wrapping_mul(two_xp1) & MASK_SIGNIFICAND == s);
+        // debug_assert!(two_xp1.wrapping_mul(two_xp1) & Self::MASK_SIGNIFICAND == s);
 
         Self(
-            (((e / 2 + NEG_EXPONENT_UNSIGNED_ZERO as i16) as u64) << 53)
-                | (two_xp1 & MASK_SIGNIFICAND),
+            (((e / 2 + Self::NEG_EXPONENT_UNSIGNED_ZERO as i16) as u64) << 53)
+                | (two_xp1 & Self::MASK_SIGNIFICAND),
         )
     }
 
@@ -269,8 +269,8 @@ impl F64 {
         let (e, s) = self.neg_exponent_unsigned_and_significand();
 
         let exponent = // short circuit to INF if equal to zero
-            2046u16.wrapping_sub(e) | (((self.0 == 0) as u16) * NEG_EXPONENT_UNSIGNED_MAX);
-        Self((exponent as u64) << 53 | invert(s, 5) & MASK_SIGNIFICAND)
+            2046u16.wrapping_sub(e) | (((self.0 == 0) as u16) * Self::NEG_EXPONENT_UNSIGNED_MAX);
+        Self((exponent as u64) << 53 | invert(s, 5) & Self::MASK_SIGNIFICAND)
     }
 }
 
@@ -293,7 +293,7 @@ impl const Neg for F64 {
     #[inline(always)]
     fn neg(self) -> Self::Output {
         let (e, s) = self.neg_exponent_unsigned_and_significand();
-        Self(((e as u64) << 53) | (s.wrapping_neg() & MASK_SIGNIFICAND))
+        Self(((e as u64) << 53) | (s.wrapping_neg() & Self::MASK_SIGNIFICAND))
     }
 }
 
@@ -322,10 +322,11 @@ impl const Add for F64 {
             .wrapping_add(s1.wrapping_shl((max_e - e1) as u32));
         let l = s2.trailing_zeros() as u16;
         let e2 = max_e.saturating_sub(l)
-            | ((e0 == NEG_EXPONENT_UNSIGNED_MAX || e1 == NEG_EXPONENT_UNSIGNED_MAX) as u16
-                * NEG_EXPONENT_UNSIGNED_MAX);
+            | ((e0 == Self::NEG_EXPONENT_UNSIGNED_MAX || e1 == Self::NEG_EXPONENT_UNSIGNED_MAX)
+                as u16
+                * Self::NEG_EXPONENT_UNSIGNED_MAX);
 
-        Self((e2 as u64) << 53 | ((s2 >> l) & MASK_SIGNIFICAND))
+        Self((e2 as u64) << 53 | ((s2 >> l) & Self::MASK_SIGNIFICAND))
     }
 }
 
@@ -371,13 +372,13 @@ impl const Mul for F64 {
         let (e0, s0) = self.neg_exponent_and_significand();
         let (e1, s1) = rhs.neg_exponent_and_significand();
 
-        let mut e2 = ((e0 + e1 + NEG_EXPONENT_UNSIGNED_ZERO as i16) as u64)
-            .min(NEG_EXPONENT_UNSIGNED_MAX as u64);
+        let mut e2 = ((e0 + e1 + Self::NEG_EXPONENT_UNSIGNED_ZERO as i16) as u64)
+            .min(Self::NEG_EXPONENT_UNSIGNED_MAX as u64);
 
         // handle infinity or nan
-        e2 |= (e0 == NEG_EXPONENT_MAX || e1 == NEG_EXPONENT_MAX) as u64
-            * NEG_EXPONENT_UNSIGNED_MAX as u64;
-        let mut s2 = s0.wrapping_mul(s1) & MASK_SIGNIFICAND;
+        e2 |= (e0 == Self::NEG_EXPONENT_MAX || e1 == Self::NEG_EXPONENT_MAX) as u64
+            * Self::NEG_EXPONENT_UNSIGNED_MAX as u64;
+        let mut s2 = s0.wrapping_mul(s1) & Self::MASK_SIGNIFICAND;
         s2 |= self.is_nan() as u64 | rhs.is_nan() as u64;
 
         Self(e2 << 53 | s2)
@@ -472,7 +473,7 @@ impl const From<u32> for F64 {
     #[inline(always)]
     fn from(x: u32) -> Self {
         let l = x.trailing_zeros() as u16;
-        Self(((NEG_EXPONENT_UNSIGNED_ZERO - l) as u64) << 53 | (x as u64) >> l)
+        Self(((Self::NEG_EXPONENT_UNSIGNED_ZERO - l) as u64) << 53 | (x as u64) >> l)
     }
 }
 
@@ -494,7 +495,8 @@ impl rand::distributions::Distribution<F64> for rand::distributions::Standard {
         let scale = rand_distr::StandardGeometric.sample(rng);
         let mut significand: u64 = self.sample(rng);
         significand |= 1; // make sure it's odd
-        F64((NEG_EXPONENT_UNSIGNED_ZERO as u64 - scale) << 53 | (significand & MASK_SIGNIFICAND))
+        F64((F64::NEG_EXPONENT_UNSIGNED_ZERO as u64 - scale) << 53
+            | (significand & F64::MASK_SIGNIFICAND))
     }
 }
 
