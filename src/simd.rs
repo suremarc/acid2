@@ -16,6 +16,11 @@ where
     LaneCount<LANES>: SupportedLaneCount,
 {
     #[inline]
+    pub fn splat(x: F64) -> Self {
+        Self(Simd::splat(x.to_bits()))
+    }
+
+    #[inline]
     pub fn from_array(arr: [F64; LANES]) -> Self {
         Self(Simd::from_array(unsafe { core::mem::transmute_copy(&arr) }))
     }
@@ -30,11 +35,39 @@ where
         (self.0 >> Simd::splat(53)).cast()
     }
 
+    /// The exponent of this 2-adic number.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(portable_simd)]
+    /// use acid2::{core::F64, simd::SimdF64};
+    /// use core::simd::Simd;
+    ///
+    /// let f = SimdF64::<8>::splat(F64::from(8));
+    ///
+    /// assert_eq!(f.exponent(), Simd::splat(3));
+    /// ```
     #[inline]
     pub fn exponent(self) -> Simd<i16, LANES> {
         -self.neg_exponent()
     }
 
+    /// The part of this number coprime to 2.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(portable_simd)]
+    /// use acid2::{core::F64, simd::SimdF64};
+    /// use core::simd::Simd;
+    ///
+    /// let f = SimdF64::<8>::splat(F64::from(8));
+    ///
+    /// let f = SimdF64::<8>::splat(F64::from(36));
+    ///
+    /// assert_eq!(f.significand(), Simd::splat(9));
+    /// ```
     #[inline]
     pub fn significand(self) -> Simd<u64, LANES> {
         self.0 & Simd::splat(F64::MASK_SIGNIFICAND)
@@ -50,6 +83,40 @@ where
         (self.neg_exponent_unsigned(), self.significand())
     }
 
+    /// The exponent and significand of this number, packed together in a tuple.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(portable_simd)]
+    /// use acid2::{core::F64, simd::SimdF64};
+    /// use core::simd::Simd;
+    ///
+    /// let f = SimdF64::<8>::splat(F64::from(12));
+    ///
+    /// assert_eq!(f.exponent_and_significand(), (Simd::splat(2), Simd::splat(3)));
+    /// ```
+    #[inline]
+    pub fn exponent_and_significand(self) -> (Simd<i16, LANES>, Simd<u64, LANES>) {
+        (self.exponent(), self.significand())
+    }
+
+    /// The 2-adic absolute value of this number.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(portable_simd)]
+    /// use acid2::{core::F64, simd::SimdF64};
+    /// use core::simd::{Simd, SimdFloat};
+    ///
+    /// let f = SimdF64::<8>::splat(F64::from(72));
+    ///
+    /// assert_eq!(f.abs(), Simd::splat(2f64.powi(-3)));
+    /// assert_eq!(SimdF64::<8>::splat(F64::ZERO).abs(), Simd::splat(0.0));
+    /// assert_eq!(SimdF64::<8>::splat(F64::INFINITY).abs(), Simd::splat(f64::INFINITY));
+    /// assert!(SimdF64::<8>::splat(F64::NAN).abs().is_nan().all());
+    /// ```
     #[inline]
     pub fn abs(self) -> Simd<f64, LANES> {
         Simd::<f64, LANES>::from_bits(
@@ -58,22 +125,89 @@ where
         )
     }
 
+    /// Whether or not this number is NaN.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(portable_simd)]
+    /// use acid2::{core::F64, simd::SimdF64};
+    /// use core::simd::Simd;
+    ///
+    /// let x = SimdF64::<8>::splat(F64::ONE);
+    /// let y = SimdF64::<8>::splat(F64::NAN);
+    /// let z = SimdF64::<8>::splat(F64::INFINITY);
+    ///
+    /// assert!(!x.is_nan().any());
+    /// assert!(y.is_nan().all());
+    /// assert!(!z.is_nan().any());
+    /// ```
     #[inline]
     pub fn is_nan(self) -> Mask<i64, LANES> {
         (self.0 & Simd::splat(F64::MASK_EXPONENT)).simd_eq(Simd::splat(F64::MASK_EXPONENT))
             & (self.0 & Simd::splat(F64::MASK_SIGNIFICAND)).simd_ne(Simd::splat(0))
     }
 
+    /// Whether or not this number is infinite.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(portable_simd)]
+    /// use acid2::{core::F64, simd::SimdF64};
+    /// use core::simd::Simd;
+    ///
+    /// let x = SimdF64::<8>::splat(F64::ONE);
+    /// let y = SimdF64::<8>::splat(F64::NAN);
+    /// let z = SimdF64::<8>::splat(F64::INFINITY);
+    ///
+    /// assert!(!x.is_infinite().any());
+    /// assert!(!y.is_infinite().any());
+    /// assert!(z.is_infinite().all());
+    /// ```
     #[inline]
     pub fn is_infinite(self) -> Mask<i64, LANES> {
         self.0.simd_eq(Simd::splat(F64::INFINITY.to_bits()))
     }
 
+    /// Whether or not this number is finite.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(portable_simd)]
+    /// use acid2::{core::F64, simd::SimdF64};
+    /// use core::simd::Simd;
+    ///
+    /// let x = SimdF64::<8>::splat(F64::ONE);
+    /// let y = SimdF64::<8>::splat(F64::NAN);
+    /// let z = SimdF64::<8>::splat(F64::INFINITY);
+    ///
+    /// assert!(x.is_finite().all());
+    /// assert!(!y.is_finite().any());
+    /// assert!(!z.is_finite().any());
+    /// ```
     #[inline]
     pub fn is_finite(self) -> Mask<i64, LANES> {
         (self.0 & Simd::splat(F64::MASK_EXPONENT)).simd_ne(Simd::splat(F64::MASK_EXPONENT))
     }
 
+    /// Computes the 2-adic square root of this number.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(portable_simd)]
+    /// use acid2::{core::F64, simd::SimdF64};
+    /// use core::simd::{Simd, SimdPartialOrd};
+    ///
+    /// let f = SimdF64::<8>::splat(F64::from(81));
+    /// let sqrt = f.sqrt();
+    ///
+    /// assert!((sqrt - SimdF64::<8>::splat(F64::from(9))).abs().simd_le(Simd::splat(1e-15)).all()); // this won't always be true for perfect squares, but in this case it is
+    /// // FIXME:
+    /// // assert!((sqrt * sqrt - f).abs().simd_le(Simd::splat(1e-7)).all());
+    /// ```
     #[inline]
     pub fn sqrt(self) -> Self {
         let (e, s) = self.neg_exponent_and_significand();
@@ -96,6 +230,21 @@ where
         )
     }
 
+    /// Computes the 2-adic reciprocal of this number.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(portable_simd)]
+    /// use acid2::{core::F64, simd::SimdF64};
+    /// use core::simd::{Simd, SimdPartialOrd};
+    ///
+    /// let f = SimdF64::<8>::splat(F64::from(13));
+    /// let recip = f.recip();
+    ///
+    /// // FIXME:
+    /// // assert!((f * recip - SimdF64::<8>::splat(F64::ONE)).abs().simd_le(Simd::splat(1e-15)).all());
+    /// ```
     #[inline]
     pub fn recip(self) -> Self {
         let (e, s) = self.neg_exponent_unsigned_and_significand();
@@ -146,6 +295,20 @@ where
 {
     type Output = Self;
 
+    /// Computes the 2-adic sum of two numbers, truncating on the left side where necessary.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(portable_simd)]
+    /// use acid2::{core::F64, simd::SimdF64};
+    /// use core::simd::{Simd, SimdPartialOrd};
+    ///
+    /// let x = SimdF64::<8>::splat(F64::from(13));
+    /// let y = SimdF64::<8>::splat(F64::from(11));
+    ///
+    /// assert!((x + y - SimdF64::<8>::splat(F64::from(24))).abs().simd_le(Simd::splat(1e-15)).all());
+    /// ```
     #[inline]
     fn add(self, rhs: Self) -> Self::Output {
         let (e0, s0) = self.neg_exponent_unsigned_and_significand();
@@ -185,6 +348,21 @@ where
 {
     type Output = Self;
 
+    /// Computes the 2-adic product of two numbers, truncating on the left side where necessary.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(portable_simd)]
+    /// use acid2::{core::F64, simd::SimdF64};
+    /// use core::simd::{Simd, SimdPartialOrd};
+    ///
+    /// let x = SimdF64::<8>::splat(F64::from(14));
+    /// let y = SimdF64::<8>::splat(F64::from(6));
+    ///
+    /// // FIXME:
+    /// // assert!((x * y - SimdF64::<8>::splat(F64::from(84))).abs().simd_le(Simd::splat(1e-15)).all());
+    /// ```
     #[inline]
     fn mul(self, rhs: Self) -> Self::Output {
         let (e0, s0) = self.neg_exponent_and_significand();
@@ -225,6 +403,22 @@ where
 {
     type Output = Self;
 
+    /// Computes the 2-adic difference of two numbers, truncating on the left side where necessary.
+    ///
+    /// `x - y` is exactly equivalent to `x + (-y)`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(portable_simd)]
+    /// use acid2::{core::F64, simd::SimdF64};
+    /// use core::simd::{Simd, SimdPartialOrd};
+    ///
+    /// let x = SimdF64::<8>::splat(F64::from(13));
+    /// let y = SimdF64::<8>::splat(F64::from(11));
+    ///
+    /// assert!((x - y - SimdF64::<8>::splat(F64::from(2))).abs().simd_le(Simd::splat(1e-15)).all());
+    /// ```
     #[inline]
     fn sub(self, rhs: Self) -> Self::Output {
         self + -rhs
@@ -247,6 +441,22 @@ where
 {
     type Output = Self;
 
+    /// Computes the 2-adic difference of two numbers, truncating on the left side where necessary.
+    ///
+    /// `x / y` is exactly equivalent to `x * y.recip()`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(portable_simd)]
+    /// use acid2::{core::F64, simd::SimdF64};
+    /// use core::simd::{Simd, SimdPartialOrd};
+    ///
+    /// let x = SimdF64::<8>::splat(F64::from(18));
+    /// let y = SimdF64::<8>::splat(F64::from(6));
+    /// // FIXME:
+    /// // assert!((x / y - SimdF64::<8>::splat(F64::from(3))).abs().simd_le(Simd::splat(1e-15)).all());
+    /// ```
     #[inline]
     #[allow(clippy::suspicious_arithmetic_impl)] // lol
     fn div(self, rhs: Self) -> Self::Output {
