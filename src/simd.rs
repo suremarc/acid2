@@ -205,8 +205,7 @@ where
     /// let sqrt = f.sqrt();
     ///
     /// assert!((sqrt - SimdF64::<8>::splat(F64::from(9))).abs().simd_le(Simd::splat(1e-15)).all()); // this won't always be true for perfect squares, but in this case it is
-    /// // FIXME:
-    /// // assert!((sqrt * sqrt - f).abs().simd_le(Simd::splat(1e-7)).all());
+    /// assert!((sqrt * sqrt - f).abs().simd_le(Simd::splat(1e-7)).all());
     /// ```
     #[inline]
     pub fn sqrt(self) -> Self {
@@ -242,8 +241,7 @@ where
     /// let f = SimdF64::<8>::splat(F64::from(13));
     /// let recip = f.recip();
     ///
-    /// // FIXME:
-    /// // assert!((f * recip - SimdF64::<8>::splat(F64::ONE)).abs().simd_le(Simd::splat(1e-15)).all());
+    /// assert!((f * recip - SimdF64::<8>::splat(F64::ONE)).abs().simd_le(Simd::splat(1e-15)).all());
     /// ```
     #[inline]
     pub fn recip(self) -> Self {
@@ -360,8 +358,7 @@ where
     /// let x = SimdF64::<8>::splat(F64::from(14));
     /// let y = SimdF64::<8>::splat(F64::from(6));
     ///
-    /// // FIXME:
-    /// // assert!((x * y - SimdF64::<8>::splat(F64::from(84))).abs().simd_le(Simd::splat(1e-15)).all());
+    /// assert!((x * y - SimdF64::<8>::splat(F64::from(84))).abs().simd_le(Simd::splat(1e-15)).all());
     /// ```
     #[inline]
     fn mul(self, rhs: Self) -> Self::Output {
@@ -381,7 +378,7 @@ where
             Simd::splat(0),
         );
         let mut s2 = (s0 * s1) & Simd::splat(F64::MASK_SIGNIFICAND);
-        s2 = (self.is_nan() | rhs.is_nan()).select(s2, Simd::splat(0));
+        s2 |= (self.is_nan() | rhs.is_nan()).select(Simd::splat(1), Simd::splat(0));
 
         Self(e2 << Simd::splat(53) | s2)
     }
@@ -454,8 +451,7 @@ where
     ///
     /// let x = SimdF64::<8>::splat(F64::from(18));
     /// let y = SimdF64::<8>::splat(F64::from(6));
-    /// // FIXME:
-    /// // assert!((x / y - SimdF64::<8>::splat(F64::from(3))).abs().simd_le(Simd::splat(1e-15)).all());
+    /// assert!((x / y - SimdF64::<8>::splat(F64::from(3))).abs().simd_le(Simd::splat(1e-15)).all());
     /// ```
     #[inline]
     #[allow(clippy::suspicious_arithmetic_impl)] // lol
