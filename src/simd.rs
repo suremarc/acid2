@@ -6,6 +6,11 @@ use core::{
     },
 };
 
+pub type F64x1 = SimdF64<1>;
+pub type F64x2 = SimdF64<2>;
+pub type F64x4 = SimdF64<4>;
+pub type F64x8 = SimdF64<8>;
+
 #[derive(Debug, Clone, Copy)]
 pub struct SimdF64<const LANES: usize>(Simd<u64, LANES>)
 where
@@ -41,10 +46,10 @@ where
     ///
     /// ```
     /// #![feature(portable_simd)]
-    /// use acid2::{core::F64, simd::SimdF64};
+    /// use acid2::{core::F64, simd::F64x8};
     /// use core::simd::Simd;
     ///
-    /// let f = SimdF64::<8>::splat(F64::from(8));
+    /// let f = F64x8::splat(F64::from(8));
     ///
     /// assert_eq!(f.exponent(), Simd::splat(3));
     /// ```
@@ -59,12 +64,12 @@ where
     ///
     /// ```
     /// #![feature(portable_simd)]
-    /// use acid2::{core::F64, simd::SimdF64};
+    /// use acid2::{core::F64, simd::F64x8};
     /// use core::simd::Simd;
     ///
-    /// let f = SimdF64::<8>::splat(F64::from(8));
+    /// let f = F64x8::splat(F64::from(8));
     ///
-    /// let f = SimdF64::<8>::splat(F64::from(36));
+    /// let f = F64x8::splat(F64::from(36));
     ///
     /// assert_eq!(f.significand(), Simd::splat(9));
     /// ```
@@ -89,10 +94,10 @@ where
     ///
     /// ```
     /// #![feature(portable_simd)]
-    /// use acid2::{core::F64, simd::SimdF64};
+    /// use acid2::{core::F64, simd::F64x8};
     /// use core::simd::Simd;
     ///
-    /// let f = SimdF64::<8>::splat(F64::from(12));
+    /// let f = F64x8::splat(F64::from(12));
     ///
     /// assert_eq!(f.exponent_and_significand(), (Simd::splat(2), Simd::splat(3)));
     /// ```
@@ -107,15 +112,15 @@ where
     ///
     /// ```
     /// #![feature(portable_simd)]
-    /// use acid2::{core::F64, simd::SimdF64};
+    /// use acid2::{core::F64, simd::F64x8};
     /// use core::simd::{Simd, SimdFloat};
     ///
-    /// let f = SimdF64::<8>::splat(F64::from(72));
+    /// let f = F64x8::splat(F64::from(72));
     ///
     /// assert_eq!(f.abs(), Simd::splat(2f64.powi(-3)));
-    /// assert_eq!(SimdF64::<8>::splat(F64::ZERO).abs(), Simd::splat(0.0));
-    /// assert_eq!(SimdF64::<8>::splat(F64::INFINITY).abs(), Simd::splat(f64::INFINITY));
-    /// assert!(SimdF64::<8>::splat(F64::NAN).abs().is_nan().all());
+    /// assert_eq!(F64x8::splat(F64::ZERO).abs(), Simd::splat(0.0));
+    /// assert_eq!(F64x8::splat(F64::INFINITY).abs(), Simd::splat(f64::INFINITY));
+    /// assert!(F64x8::splat(F64::NAN).abs().is_nan().all());
     /// ```
     #[inline]
     pub fn abs(self) -> Simd<f64, LANES> {
@@ -131,12 +136,12 @@ where
     ///
     /// ```
     /// #![feature(portable_simd)]
-    /// use acid2::{core::F64, simd::SimdF64};
+    /// use acid2::{core::F64, simd::F64x8};
     /// use core::simd::Simd;
     ///
-    /// let x = SimdF64::<8>::splat(F64::ONE);
-    /// let y = SimdF64::<8>::splat(F64::NAN);
-    /// let z = SimdF64::<8>::splat(F64::INFINITY);
+    /// let x = F64x8::splat(F64::ONE);
+    /// let y = F64x8::splat(F64::NAN);
+    /// let z = F64x8::splat(F64::INFINITY);
     ///
     /// assert!(!x.is_nan().any());
     /// assert!(y.is_nan().all());
@@ -154,12 +159,12 @@ where
     ///
     /// ```
     /// #![feature(portable_simd)]
-    /// use acid2::{core::F64, simd::SimdF64};
+    /// use acid2::{core::F64, simd::F64x8};
     /// use core::simd::Simd;
     ///
-    /// let x = SimdF64::<8>::splat(F64::ONE);
-    /// let y = SimdF64::<8>::splat(F64::NAN);
-    /// let z = SimdF64::<8>::splat(F64::INFINITY);
+    /// let x = F64x8::splat(F64::ONE);
+    /// let y = F64x8::splat(F64::NAN);
+    /// let z = F64x8::splat(F64::INFINITY);
     ///
     /// assert!(!x.is_infinite().any());
     /// assert!(!y.is_infinite().any());
@@ -176,12 +181,12 @@ where
     ///
     /// ```
     /// #![feature(portable_simd)]
-    /// use acid2::{core::F64, simd::SimdF64};
+    /// use acid2::{core::F64, simd::F64x8};
     /// use core::simd::Simd;
     ///
-    /// let x = SimdF64::<8>::splat(F64::ONE);
-    /// let y = SimdF64::<8>::splat(F64::NAN);
-    /// let z = SimdF64::<8>::splat(F64::INFINITY);
+    /// let x = F64x8::splat(F64::ONE);
+    /// let y = F64x8::splat(F64::NAN);
+    /// let z = F64x8::splat(F64::INFINITY);
     ///
     /// assert!(x.is_finite().all());
     /// assert!(!y.is_finite().any());
@@ -198,13 +203,13 @@ where
     ///
     /// ```
     /// #![feature(portable_simd)]
-    /// use acid2::{core::F64, simd::SimdF64};
+    /// use acid2::{core::F64, simd::F64x8};
     /// use core::simd::{Simd, SimdPartialOrd};
     ///
-    /// let f = SimdF64::<8>::splat(F64::from(81));
+    /// let f = F64x8::splat(F64::from(81));
     /// let sqrt = f.sqrt();
     ///
-    /// assert!((sqrt - SimdF64::<8>::splat(F64::from(9))).abs().simd_le(Simd::splat(1e-15)).all()); // this won't always be true for perfect squares, but in this case it is
+    /// assert!((sqrt - F64x8::splat(F64::from(9))).abs().simd_le(Simd::splat(1e-15)).all()); // this won't always be true for perfect squares, but in this case it is
     /// assert!((sqrt * sqrt - f).abs().simd_le(Simd::splat(1e-7)).all());
     /// ```
     #[inline]
@@ -235,13 +240,13 @@ where
     ///
     /// ```
     /// #![feature(portable_simd)]
-    /// use acid2::{core::F64, simd::SimdF64};
+    /// use acid2::{core::F64, simd::F64x8};
     /// use core::simd::{Simd, SimdPartialOrd};
     ///
-    /// let f = SimdF64::<8>::splat(F64::from(13));
+    /// let f = F64x8::splat(F64::from(13));
     /// let recip = f.recip();
     ///
-    /// assert!((f * recip - SimdF64::<8>::splat(F64::ONE)).abs().simd_le(Simd::splat(1e-15)).all());
+    /// assert!((f * recip - F64x8::splat(F64::ONE)).abs().simd_le(Simd::splat(1e-15)).all());
     /// ```
     #[inline]
     pub fn recip(self) -> Self {
@@ -299,13 +304,13 @@ where
     ///
     /// ```
     /// #![feature(portable_simd)]
-    /// use acid2::{core::F64, simd::SimdF64};
+    /// use acid2::{core::F64, simd::F64x8};
     /// use core::simd::{Simd, SimdPartialOrd};
     ///
-    /// let x = SimdF64::<8>::splat(F64::from(13));
-    /// let y = SimdF64::<8>::splat(F64::from(11));
+    /// let x = F64x8::splat(F64::from(13));
+    /// let y = F64x8::splat(F64::from(11));
     ///
-    /// assert!((x + y - SimdF64::<8>::splat(F64::from(24))).abs().simd_le(Simd::splat(1e-15)).all());
+    /// assert!((x + y - F64x8::splat(F64::from(24))).abs().simd_le(Simd::splat(1e-15)).all());
     /// ```
     #[inline]
     fn add(self, rhs: Self) -> Self::Output {
@@ -352,13 +357,13 @@ where
     ///
     /// ```
     /// #![feature(portable_simd)]
-    /// use acid2::{core::F64, simd::SimdF64};
+    /// use acid2::{core::F64, simd::F64x8};
     /// use core::simd::{Simd, SimdPartialOrd};
     ///
-    /// let x = SimdF64::<8>::splat(F64::from(14));
-    /// let y = SimdF64::<8>::splat(F64::from(6));
+    /// let x = F64x8::splat(F64::from(14));
+    /// let y = F64x8::splat(F64::from(6));
     ///
-    /// assert!((x * y - SimdF64::<8>::splat(F64::from(84))).abs().simd_le(Simd::splat(1e-15)).all());
+    /// assert!((x * y - F64x8::splat(F64::from(84))).abs().simd_le(Simd::splat(1e-15)).all());
     /// ```
     #[inline]
     fn mul(self, rhs: Self) -> Self::Output {
@@ -408,13 +413,13 @@ where
     ///
     /// ```
     /// #![feature(portable_simd)]
-    /// use acid2::{core::F64, simd::SimdF64};
+    /// use acid2::{core::F64, simd::F64x8};
     /// use core::simd::{Simd, SimdPartialOrd};
     ///
-    /// let x = SimdF64::<8>::splat(F64::from(13));
-    /// let y = SimdF64::<8>::splat(F64::from(11));
+    /// let x = F64x8::splat(F64::from(13));
+    /// let y = F64x8::splat(F64::from(11));
     ///
-    /// assert!((x - y - SimdF64::<8>::splat(F64::from(2))).abs().simd_le(Simd::splat(1e-15)).all());
+    /// assert!((x - y - F64x8::splat(F64::from(2))).abs().simd_le(Simd::splat(1e-15)).all());
     /// ```
     #[inline]
     fn sub(self, rhs: Self) -> Self::Output {
@@ -446,12 +451,12 @@ where
     ///
     /// ```
     /// #![feature(portable_simd)]
-    /// use acid2::{core::F64, simd::SimdF64};
+    /// use acid2::{core::F64, simd::F64x8};
     /// use core::simd::{Simd, SimdPartialOrd};
     ///
-    /// let x = SimdF64::<8>::splat(F64::from(18));
-    /// let y = SimdF64::<8>::splat(F64::from(6));
-    /// assert!((x / y - SimdF64::<8>::splat(F64::from(3))).abs().simd_le(Simd::splat(1e-15)).all());
+    /// let x = F64x8::splat(F64::from(18));
+    /// let y = F64x8::splat(F64::from(6));
+    /// assert!((x / y - F64x8::splat(F64::from(3))).abs().simd_le(Simd::splat(1e-15)).all());
     /// ```
     #[inline]
     #[allow(clippy::suspicious_arithmetic_impl)] // lol

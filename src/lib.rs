@@ -9,4 +9,5 @@ mod macros;
 pub mod core;
 
 #[cfg(feature = "simd")]
+#[doc(cfg(feature = "simd"))]
 pub mod simd;
