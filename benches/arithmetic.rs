@@ -13,7 +13,7 @@ use rand::Rng;
 use rand_distr::Standard;
 
 fn bench_add(c: &mut Criterion) {
-    c.bench_function("batched: 1m additions", |b| {
+    c.bench_function("1m additions", |b| {
         b.iter_batched(
             || thread_rng().sample_iter(Standard).take(1000000).collect(),
             |data: Vec<(F64, F64)>| {
@@ -27,7 +27,7 @@ fn bench_add(c: &mut Criterion) {
 }
 
 fn bench_mul(c: &mut Criterion) {
-    c.bench_function("batched: 1m multiplications", |b| {
+    c.bench_function("1m multiplications", |b| {
         b.iter_batched(
             || thread_rng().sample_iter(Standard).take(1000000).collect(),
             |data: Vec<(F64, F64)>| {
@@ -41,7 +41,7 @@ fn bench_mul(c: &mut Criterion) {
 }
 
 fn bench_recip(c: &mut Criterion) {
-    c.bench_function("batched: 1m reciprocals", |b| {
+    c.bench_function("1m reciprocals", |b| {
         b.iter_batched(
             || thread_rng().sample_iter(Standard).take(1000000).collect(),
             |data: Vec<F64>| {
@@ -55,7 +55,7 @@ fn bench_recip(c: &mut Criterion) {
 }
 
 fn bench_sqrt(c: &mut Criterion) {
-    c.bench_function("batched: 1m square roots", |b| {
+    c.bench_function("1m square roots", |b| {
         b.iter_batched(
             || {
                 thread_rng()
@@ -75,7 +75,7 @@ fn bench_sqrt(c: &mut Criterion) {
 }
 
 fn bench_add_simd(c: &mut Criterion) {
-    c.bench_function("batched: 1m additions, simd", |b| {
+    c.bench_function("1m additions, simd", |b| {
         b.iter_batched(
             || {
                 thread_rng()
@@ -94,7 +94,7 @@ fn bench_add_simd(c: &mut Criterion) {
 }
 
 fn bench_mul_simd(c: &mut Criterion) {
-    c.bench_function("batched: 1m multiplications, simd", |b| {
+    c.bench_function("1m multiplications, simd", |b| {
         b.iter_batched(
             || {
                 thread_rng()
@@ -113,17 +113,19 @@ fn bench_mul_simd(c: &mut Criterion) {
 }
 
 fn bench_recip_simd(c: &mut Criterion) {
-    c.bench_function("batched: 1m reciprocals, simd", |b| {
+    c.bench_function("1m reciprocals, simd", |b| {
         b.iter_batched(
             || {
                 thread_rng()
                     .sample_iter(Standard)
+                    .array_chunks()
+                    .map(|arr| SimdF64::from_array(arr))
                     .take(1000000 / 8)
                     .collect()
             },
-            |data: Vec<[F64; 8]>| {
+            |data: Vec<SimdF64<8>>| {
                 for x in data {
-                    black_box(SimdF64::<8>::from_array(x).recip());
+                    black_box(x.recip());
                 }
             },
             BatchSize::SmallInput,
@@ -132,19 +134,20 @@ fn bench_recip_simd(c: &mut Criterion) {
 }
 
 fn bench_sqrt_simd(c: &mut Criterion) {
-    c.bench_function("batched: 1m square roots, simd", |b| {
+    c.bench_function("1m square roots, simd", |b| {
         b.iter_batched(
             || {
                 thread_rng()
                     .sample_iter::<F64, _>(Standard)
                     .filter(|&x| x.significand() % 8 == 1 && x.exponent() % 2 == 0)
                     .array_chunks()
+                    .map(|arr| SimdF64::from_array(arr))
                     .take(1000000 / 8)
                     .collect()
             },
-            |data: Vec<[F64; 8]>| {
+            |data: Vec<SimdF64<8>>| {
                 for x in data {
-                    black_box(SimdF64::from_array(x).sqrt());
+                    black_box(x.sqrt());
                 }
             },
             BatchSize::SmallInput,

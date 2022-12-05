@@ -1,7 +1,9 @@
 use crate::core::F64;
 use core::{
     ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign},
-    simd::{LaneCount, Mask, Simd, SimdFloat, SimdPartialEq, SimdUint, SupportedLaneCount},
+    simd::{
+        LaneCount, Mask, Simd, SimdFloat, SimdOrd, SimdPartialEq, SimdUint, SupportedLaneCount,
+    },
 };
 
 #[derive(Debug, Clone, Copy)]
@@ -75,12 +77,12 @@ where
     #[inline]
     pub fn sqrt(self) -> Self {
         let (e, s) = self.neg_exponent_and_significand();
-        assert!((e & Simd::splat(0x1)).simd_eq(Simd::splat(0)).all());
-        assert!((s & Simd::splat(0x111)).simd_eq(Simd::splat(1)).all());
+        assert!((e & Simd::splat(0b1)).simd_eq(Simd::splat(0)).all());
+        assert!((s & Simd::splat(0b111)).simd_eq(Simd::splat(1)).all());
 
         let two_b = s >> Simd::splat(2);
         let mut x = two_b;
-        let mut two_xp1 = x << Simd::splat(1u64) + Simd::splat(1);
+        let mut two_xp1 = (x << Simd::splat(1u64)) + Simd::splat(1);
         for i in 2..6 {
             // x' = x - (x^2 + x - 2b) / (2x + 1)
             x -= (x * x + x - two_b) * invert(two_xp1, i);
@@ -149,7 +151,7 @@ where
         let (e0, s0) = self.neg_exponent_unsigned_and_significand();
         let (e1, s1) = rhs.neg_exponent_unsigned_and_significand();
 
-        let max_e = e0.max(e1);
+        let max_e = e0.simd_max(e1);
         let s2 = (s0 << ((max_e - e0).cast())) + (s1 << ((max_e - e1).cast()));
 
         // this part is slow
@@ -188,8 +190,10 @@ where
         let (e0, s0) = self.neg_exponent_and_significand();
         let (e1, s1) = rhs.neg_exponent_and_significand();
 
-        let mut e2 = ((e0 + e1 + Simd::splat(F64::NEG_EXPONENT_UNSIGNED_ZERO as i16)).cast())
-            .min(Simd::splat(F64::NEG_EXPONENT_UNSIGNED_MAX as u64));
+        let mut e2 = core::simd::SimdOrd::simd_min(
+            (e0 + e1 + Simd::splat(F64::NEG_EXPONENT_UNSIGNED_ZERO as i16)).cast(),
+            Simd::splat(F64::NEG_EXPONENT_UNSIGNED_MAX as u64),
+        );
         // handle infinity or nan
         e2 |= (e0.simd_eq(Simd::splat(F64::NEG_EXPONENT_MAX))
             | e1.simd_eq(Simd::splat(F64::NEG_EXPONENT_MAX)))
