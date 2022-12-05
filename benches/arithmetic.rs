@@ -1,7 +1,7 @@
 #![feature(iter_array_chunks)]
 
 use acid2::core::F64;
-use acid2::simd::SimdF64;
+use acid2::simd::F64x8;
 use criterion::black_box;
 use criterion::BatchSize;
 use criterion::Criterion;
@@ -80,12 +80,15 @@ fn bench_add_simd(c: &mut Criterion) {
             || {
                 thread_rng()
                     .sample_iter(Standard)
-                    .take(1000000 / 8)
+                    .take(1000000 * 2)
+                    .array_chunks()
+                    .map(F64x8::from_array)
+                    .array_chunks()
                     .collect()
             },
-            |data: Vec<([F64; 8], [F64; 8])>| {
-                for (x, y) in data {
-                    black_box(SimdF64::<8>::from_array(x) + SimdF64::<8>::from_array(y));
+            |data: Vec<[F64x8; 2]>| {
+                for [x, y] in data {
+                    black_box(x + y);
                 }
             },
             BatchSize::SmallInput,
@@ -99,12 +102,15 @@ fn bench_mul_simd(c: &mut Criterion) {
             || {
                 thread_rng()
                     .sample_iter(Standard)
-                    .take(1000000 / 8)
+                    .take(1000000 * 2)
+                    .array_chunks()
+                    .map(F64x8::from_array)
+                    .array_chunks()
                     .collect()
             },
-            |data: Vec<([F64; 8], [F64; 8])>| {
-                for (x, y) in data {
-                    black_box(SimdF64::<8>::from_array(x) + SimdF64::<8>::from_array(y));
+            |data: Vec<[F64x8; 2]>| {
+                for [x, y] in data {
+                    black_box(x * y);
                 }
             },
             BatchSize::SmallInput,
@@ -118,12 +124,12 @@ fn bench_recip_simd(c: &mut Criterion) {
             || {
                 thread_rng()
                     .sample_iter(Standard)
+                    .take(1000000)
                     .array_chunks()
-                    .map(|arr| SimdF64::from_array(arr))
-                    .take(1000000 / 8)
+                    .map(F64x8::from_array)
                     .collect()
             },
-            |data: Vec<SimdF64<8>>| {
+            |data: Vec<F64x8>| {
                 for x in data {
                     black_box(x.recip());
                 }
@@ -140,12 +146,12 @@ fn bench_sqrt_simd(c: &mut Criterion) {
                 thread_rng()
                     .sample_iter::<F64, _>(Standard)
                     .filter(|&x| x.significand() % 8 == 1 && x.exponent() % 2 == 0)
+                    .take(1000000)
                     .array_chunks()
-                    .map(|arr| SimdF64::from_array(arr))
-                    .take(1000000 / 8)
+                    .map(F64x8::from_array)
                     .collect()
             },
-            |data: Vec<SimdF64<8>>| {
+            |data: Vec<F64x8>| {
                 for x in data {
                     black_box(x.sqrt());
                 }
