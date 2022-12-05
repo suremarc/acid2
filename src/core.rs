@@ -33,16 +33,21 @@ use crate::macros::forward_ref_binop;
 pub struct F64(u64);
 
 impl F64 {
-    const MASK_SIGNIFICAND: u64 = 0x1fffffffffffff;
-    const MASK_EXPONENT: u64 = !Self::MASK_SIGNIFICAND;
-    const NEG_EXPONENT_MAX: i16 = 1024;
-    const NEG_EXPONENT_UNSIGNED_MAX: u16 = 2047;
-    const NEG_EXPONENT_UNSIGNED_ZERO: u16 = 1023;
+    pub const MASK_SIGNIFICAND: u64 = 0x1fffffffffffff;
+    pub const MASK_EXPONENT: u64 = !Self::MASK_SIGNIFICAND;
+    pub const NEG_EXPONENT_MAX: i16 = 1024;
+    pub const NEG_EXPONENT_UNSIGNED_MAX: u16 = 2047;
+    pub const NEG_EXPONENT_UNSIGNED_ZERO: u16 = 1023;
 
     pub const ZERO: Self = Self(0);
     pub const ONE: Self = Self((Self::NEG_EXPONENT_UNSIGNED_ZERO as u64) << 53 | 1);
     pub const INFINITY: Self = Self((Self::NEG_EXPONENT_UNSIGNED_MAX as u64) << 53);
     pub const NAN: Self = Self((Self::NEG_EXPONENT_UNSIGNED_MAX as u64) << 53 | 1);
+
+    #[inline(always)]
+    pub const fn to_bits(self) -> u64 {
+        self.0
+    }
 
     #[inline(always)]
     const fn neg_exponent(self) -> i16 {
