@@ -32,3 +32,7 @@ acid2 = { path = ".", features = ["rand", "simd"] }
 [[bench]]
 name = "arithmetic"
 harness = false
+
+[package.metadata.docs.rs]
+features = ["rand", "simd"]
+all-features = true

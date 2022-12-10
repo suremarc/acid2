@@ -8,6 +8,6 @@ mod macros;
 
 pub mod core;
 
-#[cfg(feature = "simd")]
+#[cfg(any(feature = "simd", doc))]
 #[doc(cfg(feature = "simd"))]
 pub mod simd;
