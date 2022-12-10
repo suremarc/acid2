@@ -6,8 +6,10 @@
 
 mod macros;
 
+/// Basic floating-point types.
 pub mod core;
 
-#[cfg(any(feature = "simd", doc))]
+#[cfg(feature = "simd")]
 #[doc(cfg(feature = "simd"))]
+/// SIMD-accelerated types for additional performance.
 pub mod simd;
